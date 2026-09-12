@@ -43,3 +43,8 @@ yarn-error.log*
 next-env.d.ts
 
 docs
+
+# 3d source files (raw art assets, keep out of git & deployments)
+*.blend
+*.blend1
+/blender/
