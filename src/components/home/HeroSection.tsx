@@ -1,15 +1,31 @@
-import { HeroScene } from "@/components/home/HeroScene";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { HeroInteractive } from "@/components/home/HeroInteractive";
 import { HomePage } from "@/types";
 
 interface HeroSectionProps {
-  data: Pick<HomePage, "heroTitle" | "heroPrimaryCta" | "heroWhatsappLabel"> | null;
+  data: Pick<HomePage, "heroTitle" | "heroPrimaryCta"> | null;
 }
 
-// TEMP: layout stripped down to isolated 3D model test — headline/CTA restored once the asset is validated.
-export function HeroSection(_props: HeroSectionProps) {
+export function HeroSection({ data }: HeroSectionProps) {
+  const cta = data?.heroPrimaryCta;
+
   return (
-    <section className="relative h-[calc(100dvh-5rem)] min-h-[540px] w-full bg-black overflow-hidden">
-      <HeroScene />
+    <section className="relative h-[88svh] min-h-[560px] w-full overflow-hidden bg-background md:h-dvh">
+      <HeroInteractive
+        title={
+          <h1 className="pointer-events-auto max-w-[12ch] text-[44px] leading-[0.9] tracking-tight uppercase md:text-7xl lg:text-8xl">
+            {data?.heroTitle}
+          </h1>
+        }
+        cta={
+          cta?.label && cta.href ? (
+            <Button size="lg" className="w-full md:w-auto" render={<Link href={cta.href} />}>
+              {cta.label}
+            </Button>
+          ) : null
+        }
+      />
     </section>
   );
 }

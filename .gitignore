@@ -48,3 +48,5 @@ docs
 *.blend
 *.blend1
 /blender/
+# uncompressed GLB originals (kept locally for re-export)
+/public/assets/orig/

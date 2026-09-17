@@ -1,81 +1,80 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { ContactShadows, Environment, Html, OrbitControls, useAnimations, useGLTF, useProgress } from "@react-three/drei";
-import {
-  AnimationAction,
-  Color,
-  Group,
-  LoopOnce,
-  MathUtils,
-  Mesh,
-  MeshStandardMaterial,
-} from "three";
+import { ContactShadows, useAnimations, useGLTF, useProgress } from "@react-three/drei";
+import { Color, Group, LoopRepeat, MathUtils, Mesh, MeshStandardMaterial, SpotLight, Vector3 } from "three";
 import { cn } from "@/lib/utils";
+import { EXERCISES, ExerciseKey } from "@/components/home/heroExercises";
 
 const CHARACTER_MODEL_PATH = "/assets/gym_hero_character.glb";
 const ENV_MODEL_PATH = "/assets/olympia-gym-hero.glb";
 const CHARACTER_SCALE = 10.85;
+// World-space x offset of the character; camera targets and character lights follow it.
+const CHARACTER_X = 0.3;
+
+// Camera rig — tuned by trial on device, see docs/design-language.md §5.
+const CAMERA = {
+  distance: 4.2,
+  basePitch: MathUtils.degToRad(4),
+  fovDesktop: 40,
+  fovMobile: 34,
+  // Negative x shifts the framing so the character sits in the right column on desktop.
+  targetDesktop: new Vector3(CHARACTER_X - 1.2, 0.9, 0),
+  targetMobile: new Vector3(CHARACTER_X, 0.9, 0),
+  yawLimit: MathUtils.degToRad(25),
+  pitchMin: MathUtils.degToRad(-5),
+  pitchMax: MathUtils.degToRad(10),
+  parallax: MathUtils.degToRad(4),
+  dragSensitivity: 0.004,
+  dampDrag: 12,
+  dampRelease: 3, // ~1.5 s settle after release
+};
 
 const COLOR_REST = new Color(1, 1, 1);
-const COLOR_ACTIVE_BASE = new Color("#c8102e"); // Deep anatomical crimson preserving shadow crevices
-const COLOR_ACTIVE_PEAK = new Color("#ff1a40"); // Luminous neon glow at peak muscle squeeze
+// Skin color is never tinted; the "burning muscle" look comes from emissive only so it reads as glow under skin.
 const EMISSIVE_COLOR = new Color("#ff0a2e");
 const ROUGHNESS_REST = 0.5;
-const ROUGHNESS_ACTIVE = 0.4; // Preserves athletic specular sheen defining 3D muscle curvature
-const scratchColor = new Color();
+const ROUGHNESS_ACTIVE = 0.4;
+const scratchVec = new Vector3();
 
-type ExerciseKey = "bicep" | "frontraise" | "squat";
-
-const EXERCISES: {
-  key: ExerciseKey;
-  label: string;
-  muscleLabel: string;
-  actionName: string;
-  highlightName: string;
-}[] = [
-  {
-    key: "bicep",
-    label: "Bicep Curl",
-    muscleLabel: "BICEPS BRACHII",
-    actionName: "BicepCurl",
-    highlightName: "Bicep_Highlight",
-  },
-  {
-    key: "frontraise",
-    label: "Front Raise",
-    muscleLabel: "ANTERIOR DELTOID",
-    actionName: "FrontRaise",
-    highlightName: "FrontRaise_Highlight",
-  },
-  {
-    key: "squat",
-    label: "Squat",
-    muscleLabel: "QUADRICEPS & GLUTEUS",
-    actionName: "Squat",
-    highlightName: "Squat_Highlight",
-  },
-];
-
-interface GymCharacterModelProps {
-  activeExercise: ExerciseKey | null;
-  onRepComplete: () => void;
+interface PointerState {
+  dragging: boolean;
+  yaw: number;
+  pitch: number;
+  parallaxX: number;
+  parallaxY: number;
+  lastX: number;
+  lastY: number;
 }
 
-function GymCharacterModel({ activeExercise, onRepComplete }: GymCharacterModelProps) {
+interface SceneProps {
+  activeExercise: ExerciseKey | null;
+  onRepComplete: () => void;
+  onLoaded: () => void;
+  isMobile: boolean;
+  paused: boolean;
+}
+
+function GymCharacter({
+  activeExercise,
+  onRepComplete,
+  pulseRef,
+}: Pick<SceneProps, "activeExercise" | "onRepComplete"> & { pulseRef: React.MutableRefObject<number> }) {
   const groupRef = useRef<Group>(null);
   const { scene, animations } = useGLTF(CHARACTER_MODEL_PATH);
-
   const { actions, mixer } = useAnimations(animations, groupRef);
 
   const highlightMaterials = useMemo(() => {
     const map: Partial<Record<string, MeshStandardMaterial>> = {};
     const names = EXERCISES.map((e) => e.highlightName);
     scene.traverse((obj) => {
-      if (!(obj as Mesh).isMesh) return;
-      const mats = Array.isArray((obj as Mesh).material) ? (obj as Mesh).material : [(obj as Mesh).material];
+      const mesh = obj as Mesh;
+      if (!mesh.isMesh) return;
+      // Skinned bounding spheres come from the rest pose; culling drops limbs at frame edges.
+      mesh.frustumCulled = false;
+      mesh.castShadow = true;
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
       (mats as MeshStandardMaterial[]).forEach((m) => {
         if (m?.name && names.includes(m.name)) map[m.name] = m;
       });
@@ -84,20 +83,8 @@ function GymCharacterModel({ activeExercise, onRepComplete }: GymCharacterModelP
   }, [scene]);
 
   useEffect(() => {
-    // Align rest-pose Hips translation with initial animated frame coordinates
-    const hips = scene.getObjectByName("mixamorig:Hips");
-    if (hips) {
-      hips.position.set(0.002947, -0.008119, -10.158342);
-    }
-
-    scene.traverse((obj) => {
-      if ((obj as Mesh).isMesh) {
-        obj.castShadow = true;
-      }
-    });
-  }, [scene]);
-
-  useEffect(() => {
+    // Align rest-pose Hips translation with the animated frame so feet touch the floor.
+    scene.getObjectByName("mixamorig:Hips")?.position.set(0.002947, -0.008119, -10.158342);
     Object.values(highlightMaterials).forEach((m) => {
       if (!m) return;
       m.color.copy(COLOR_REST);
@@ -105,90 +92,62 @@ function GymCharacterModel({ activeExercise, onRepComplete }: GymCharacterModelP
       m.emissiveIntensity = 0;
       m.roughness = ROUGHNESS_REST;
     });
-  }, [highlightMaterials]);
-
-  useFrame((_, delta) => {
-    // Track dynamic rep progression to pulse the highlight with muscle contraction
-    const activeConfig = EXERCISES.find((e) => e.key === activeExercise);
-    const activeAction = activeConfig ? actions[activeConfig.actionName] : undefined;
-    let contraction = 0;
-    if (activeAction && activeAction.isRunning()) {
-      const duration = activeAction.getClip().duration || 1;
-      const progress = Math.min(Math.max(activeAction.time / duration, 0), 1);
-      // Sinusoidal contraction curve: 0 at start -> 1.0 at peak squeeze -> 0 at rep completion
-      contraction = Math.sin(progress * Math.PI);
-    }
-
-    EXERCISES.forEach((ex) => {
-      const mat = highlightMaterials[ex.highlightName];
-      if (!mat) return;
-      const isActive = ex.key === activeExercise;
-      const t = delta * 6;
-
-      if (isActive) {
-        scratchColor.lerpColors(COLOR_ACTIVE_BASE, COLOR_ACTIVE_PEAK, contraction);
-        mat.color.lerp(scratchColor, t);
-        mat.roughness = MathUtils.lerp(mat.roughness, ROUGHNESS_ACTIVE, t);
-        // Emissive swells from warm 0.35 baseline up to glowing 0.85 at peak contraction
-        const targetEmissive = 0.35 + 0.5 * Math.pow(contraction, 1.2);
-        mat.emissiveIntensity = MathUtils.lerp(mat.emissiveIntensity, targetEmissive, t);
-      } else {
-        mat.color.lerp(COLOR_REST, t);
-        mat.roughness = MathUtils.lerp(mat.roughness, ROUGHNESS_REST, t);
-        mat.emissiveIntensity = MathUtils.lerp(mat.emissiveIntensity, 0, t);
-      }
-    });
-  });
+  }, [scene, highlightMaterials]);
 
   useEffect(() => {
     actions.Idle?.reset().play();
   }, [actions]);
 
   useEffect(() => {
-    if (!activeExercise) return;
     const config = EXERCISES.find((e) => e.key === activeExercise);
     const action = config ? actions[config.actionName] : undefined;
-    if (!config || !action) return;
+    const idle = actions.Idle;
+    if (!action) {
+      idle?.reset().fadeIn(0.3).play();
+      return;
+    }
 
-    actions.Idle?.fadeOut(0.25);
-    action.reset();
-    action.setLoop(LoopOnce, 1);
-    action.clampWhenFinished = true;
-    action.fadeIn(0.25).play();
+    idle?.fadeOut(0.3);
+    action.reset().setLoop(LoopRepeat, Infinity).fadeIn(0.3).play();
+    pulseRef.current = 1;
 
-    const handleFinished = (e: { action: AnimationAction }) => {
-      if (e.action !== action) return;
-      mixer.removeEventListener("finished", handleFinished);
-      action.fadeOut(0.3);
-      actions.Idle?.reset().fadeIn(0.3).play();
-      onRepComplete();
+    const handleLoop = (e: { action: unknown }) => {
+      if (e.action === action) onRepComplete();
     };
-    mixer.addEventListener("finished", handleFinished);
-
+    mixer.addEventListener("loop", handleLoop);
     return () => {
-      mixer.removeEventListener("finished", handleFinished);
+      mixer.removeEventListener("loop", handleLoop);
+      action.fadeOut(0.3);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeExercise]);
+  }, [activeExercise, actions, mixer, onRepComplete, pulseRef]);
 
-  const currentConfig = EXERCISES.find((e) => e.key === activeExercise);
+  useFrame((_, delta) => {
+    const config = EXERCISES.find((e) => e.key === activeExercise);
+    const action = config ? actions[config.actionName] : undefined;
+    let contraction = 0;
+    if (action?.isRunning()) {
+      const duration = action.getClip().duration || 1;
+      // 0 at rep start → 1 at peak squeeze → 0 at rep end
+      contraction = Math.sin(((action.time % duration) / duration) * Math.PI);
+    }
+
+    const t = delta * 6;
+    EXERCISES.forEach((ex) => {
+      const mat = highlightMaterials[ex.highlightName];
+      if (!mat) return;
+      if (ex.key === activeExercise) {
+        mat.roughness = MathUtils.lerp(mat.roughness, ROUGHNESS_ACTIVE, t);
+        mat.emissiveIntensity = MathUtils.lerp(mat.emissiveIntensity, 0.6 + 1.2 * Math.pow(contraction, 1.2), t);
+      } else {
+        mat.roughness = MathUtils.lerp(mat.roughness, ROUGHNESS_REST, t);
+        mat.emissiveIntensity = MathUtils.lerp(mat.emissiveIntensity, 0, t);
+      }
+    });
+  });
 
   return (
-    <group ref={groupRef} scale={CHARACTER_SCALE} position={[0, 0, 0]}>
+    <group ref={groupRef} scale={CHARACTER_SCALE} position={[CHARACTER_X, 0, 0]}>
       <primitive object={scene} />
-      <Html position={[0, 0.188, 0]} center distanceFactor={2.6} className="pointer-events-none select-none">
-        {activeExercise && currentConfig ? (
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/90 border border-red-500/60 backdrop-blur-md text-[10px] font-mono tracking-widest text-red-400 whitespace-nowrap shadow-[0_0_15px_rgba(239,68,68,0.4)]">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-            {currentConfig.muscleLabel}
-          </div>
-        ) : (
-          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/70 border border-white/10 backdrop-blur-md text-[9px] font-mono tracking-widest text-white/40 whitespace-nowrap">
-            <span className="w-1 h-1 rounded-full bg-white/30" />
-            OLYMPIA ATHLETE
-          </div>
-        )}
-      </Html>
     </group>
   );
 }
@@ -198,175 +157,181 @@ function GymEnvironment() {
 
   useEffect(() => {
     scene.traverse((obj) => {
-      if ((obj as Mesh).isMesh) {
-        const mesh = obj as Mesh;
-        mesh.receiveShadow = true;
-        const name = (mesh.name || "").toLowerCase();
-        if (
-          name.includes("rack") ||
-          name.includes("bench") ||
-          name.includes("plate") ||
-          name.includes("bar") ||
-          name.includes("tree") ||
-          name.includes("clip")
-        ) {
-          mesh.castShadow = true;
-        }
-      }
+      const mesh = obj as Mesh;
+      if (!mesh.isMesh) return;
+      mesh.receiveShadow = true;
+      mesh.castShadow = /rack|bench|plate|bar|tree|clip/i.test(mesh.name);
     });
   }, [scene]);
 
   return <primitive object={scene} />;
 }
 
-useGLTF.preload(CHARACTER_MODEL_PATH);
-useGLTF.preload(ENV_MODEL_PATH);
-
-function LoadingOverlay() {
-  const { active, progress } = useProgress();
-  if (!active) return null;
+function CharacterSpot({ pulseRef }: { pulseRef: React.MutableRefObject<number> }) {
+  const ref = useRef<SpotLight>(null);
+  useEffect(() => {
+    // Light target is not part of the scene graph; update its matrix once by hand.
+    ref.current?.target.position.set(CHARACTER_X, 0.9, 0);
+    ref.current?.target.updateMatrixWorld();
+  }, []);
+  useFrame((_, delta) => {
+    if (!ref.current) return;
+    pulseRef.current = MathUtils.damp(pulseRef.current, 0, 4, delta);
+    ref.current.intensity = 18 + pulseRef.current * 22;
+  });
   return (
-    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-black text-white">
-      <div className="text-[10px] uppercase tracking-[0.22em] text-white/40">Loading</div>
-      <div className="h-[2px] w-44 overflow-hidden rounded-full bg-white/10">
-        <div
-          className="h-full rounded-full bg-orange-500 transition-[width] duration-200"
-          style={{ width: `${progress}%` }}
-        />
+    <spotLight
+      ref={ref}
+      position={[CHARACTER_X + 0.6, 3.2, 2.2]}
+      angle={0.5}
+      penumbra={0.7}
+      color="#ffd9a3"
+      castShadow
+      shadow-bias={-0.0004}
+      shadow-mapSize={[1024, 1024]}
+    />
+  );
+}
+
+function CameraRig({ pointer, isMobile }: { pointer: React.MutableRefObject<PointerState>; isMobile: boolean }) {
+  const current = useRef({ yaw: 0, pitch: 0 });
+
+  useFrame(({ camera }, delta) => {
+    const fov = isMobile ? CAMERA.fovMobile : CAMERA.fovDesktop;
+    if ("fov" in camera && camera.fov !== fov) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
+
+    const p = pointer.current;
+    const targetYaw = p.dragging ? p.yaw : p.parallaxX;
+    const targetPitch = p.dragging ? p.pitch : p.parallaxY;
+    const lambda = p.dragging ? CAMERA.dampDrag : CAMERA.dampRelease;
+    current.current.yaw = MathUtils.damp(current.current.yaw, targetYaw, lambda, delta);
+    current.current.pitch = MathUtils.damp(current.current.pitch, targetPitch, lambda, delta);
+
+    const target = isMobile ? CAMERA.targetMobile : CAMERA.targetDesktop;
+    const yaw = current.current.yaw;
+    const pitch = CAMERA.basePitch + current.current.pitch;
+    scratchVec.set(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
+    camera.position.copy(target).addScaledVector(scratchVec, CAMERA.distance);
+    camera.lookAt(target);
+  });
+
+  return null;
+}
+
+function LoadingOverlay({ onLoaded }: { onLoaded: () => void }) {
+  const { active, progress } = useProgress();
+  const [visible, setVisible] = useState(true);
+  const done = !active && progress === 100;
+
+  useEffect(() => {
+    if (!done) return;
+    onLoaded();
+    const id = setTimeout(() => setVisible(false), 500);
+    return () => clearTimeout(id);
+  }, [done, onLoaded]);
+
+  if (!visible) return null;
+  return (
+    <div
+      className={cn(
+        "absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background bg-honeycomb transition-opacity duration-500",
+        done && "opacity-0"
+      )}
+    >
+      <span className="font-display text-5xl font-black tabular-nums text-foreground">{Math.round(progress)}%</span>
+      <div className="h-px w-40 bg-border">
+        <div className="led-divider transition-[width] duration-200" style={{ width: `${progress}%` }} />
       </div>
     </div>
   );
 }
 
-export function HeroScene() {
-  const [activeExercise, setActiveExercise] = useState<ExerciseKey | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [repCount, setRepCount] = useState(0);
+export function HeroScene({ activeExercise, onRepComplete, onLoaded, isMobile, paused }: SceneProps) {
+  const pulseRef = useRef(0);
+  const pointer = useRef<PointerState>({
+    dragging: false,
+    yaw: 0,
+    pitch: 0,
+    parallaxX: 0,
+    parallaxY: 0,
+    lastX: 0,
+    lastY: 0,
+  });
 
-  const handleRepComplete = useCallback(() => {
-    setIsPlaying(false);
-    setActiveExercise(null);
-    setRepCount((c) => c + 1);
-  }, []);
+  useEffect(() => {
+    if (isMobile) return;
+    const onMove = (e: MouseEvent) => {
+      const p = pointer.current;
+      p.parallaxX = ((e.clientX / window.innerWidth) * 2 - 1) * CAMERA.parallax;
+      p.parallaxY = -((e.clientY / window.innerHeight) * 2 - 1) * CAMERA.parallax * 0.5;
+    };
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, [isMobile]);
 
-  const handleExerciseClick = (key: ExerciseKey) => {
-    if (isPlaying) return;
-    setIsPlaying(true);
-    setActiveExercise(key);
+  const handlePointerDown = (e: React.PointerEvent) => {
+    const p = pointer.current;
+    p.dragging = true;
+    p.yaw = p.parallaxX;
+    p.pitch = p.parallaxY;
+    p.lastX = e.clientX;
+    p.lastY = e.clientY;
+    e.currentTarget.setPointerCapture(e.pointerId);
   };
 
-  const activeLabel = EXERCISES.find((e) => e.key === activeExercise)?.label ?? "—";
+  const handlePointerMove = (e: React.PointerEvent) => {
+    const p = pointer.current;
+    if (!p.dragging) return;
+    p.yaw = MathUtils.clamp(p.yaw + (e.clientX - p.lastX) * CAMERA.dragSensitivity, -CAMERA.yawLimit, CAMERA.yawLimit);
+    if (!isMobile) {
+      p.pitch = MathUtils.clamp(p.pitch - (e.clientY - p.lastY) * CAMERA.dragSensitivity, CAMERA.pitchMin, CAMERA.pitchMax);
+    }
+    p.lastX = e.clientX;
+    p.lastY = e.clientY;
+  };
+
+  const handlePointerUp = () => {
+    pointer.current.dragging = false;
+  };
 
   return (
-    <div className="relative h-full w-full">
-      <LoadingOverlay />
-      <Canvas camera={{ position: [0, 1.2, 4.2], fov: 40 }} shadows>
-        <ambientLight intensity={0.5} />
-        <directionalLight
-          position={[2.5, 4.5, 2]}
-          intensity={1.3}
-          castShadow
-          shadow-bias={-0.0004}
-          shadow-mapSize-width={1024}
-          shadow-mapSize-height={1024}
-        />
+    <div
+      className="absolute inset-0 cursor-grab active:cursor-grabbing"
+      style={{ touchAction: "pan-y" }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+    >
+      <LoadingOverlay onLoaded={onLoaded} />
+      <Canvas
+        shadows
+        dpr={[1, isMobile ? 1.5 : 2]}
+        frameloop={paused ? "never" : "always"}
+        camera={{ position: [0, 1.2, 4.2], fov: CAMERA.fovDesktop }}
+      >
+        <ambientLight intensity={0.7} />
+        <hemisphereLight color="#4a423a" groundColor="#0b0b0b" intensity={1.2} />
+        <directionalLight position={[2.5, 4.5, 2]} intensity={0.9} />
+        {/* Wall washes: bring out the equipment along the back wall without touching the character much. */}
+        <pointLight position={[-2.2, 2.4, -2.0]} intensity={20} distance={7} decay={2} color="#ffd9a3" />
+        <pointLight position={[2.4, 2.4, -2.0]} intensity={20} distance={7} decay={2} color="#ffd9a3" />
+        {/* Amber rim just behind the character; distance-limited so walls and floor stay untouched. */}
+        <pointLight position={[CHARACTER_X - 0.6, 2.2, -1.0]} intensity={25} distance={3.5} decay={2} color="#f2a93b" />
+        <CharacterSpot pulseRef={pulseRef} />
+        <CameraRig pointer={pointer} isMobile={isMobile} />
         <Suspense fallback={null}>
           <GymEnvironment />
-          <GymCharacterModel activeExercise={activeExercise} onRepComplete={handleRepComplete} />
-          <ContactShadows
-            position={[0, 0.002, 0]}
-            opacity={0.65}
-            scale={5}
-            blur={1.6}
-            far={1.5}
-          />
-          <Environment preset="city" />
+          <GymCharacter activeExercise={activeExercise} onRepComplete={onRepComplete} pulseRef={pulseRef} />
+          {!isMobile && <ContactShadows position={[CHARACTER_X, 0.002, 0]} opacity={0.65} scale={5} blur={1.6} far={1.5} />}
         </Suspense>
-        <OrbitControls
-          enableDamping
-          dampingFactor={0.07}
-          target={[0, 0.9, 0]}
-          minDistance={2}
-          maxDistance={7.5}
-          maxPolarAngle={Math.PI / 2 - 0.02}
-          enablePan={false}
-        />
       </Canvas>
-
-      {/* Top Bar Overlay */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between p-4 sm:p-6 md:p-8">
-        {/* Brand & Hours */}
-        <div className="pointer-events-auto flex flex-col gap-0.5 sm:gap-1">
-          <span className="text-xs sm:text-sm font-extrabold font-mono tracking-wider text-white uppercase">
-            OLYMPIA GYM
-          </span>
-          <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] font-mono tracking-widest text-white/50">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>09:00 — 23:00</span>
-          </div>
-        </div>
-
-        {/* Navigation Action Buttons */}
-        <div className="pointer-events-auto flex items-center gap-2 sm:gap-3">
-          <Link
-            href="#fiyatlar"
-            className="px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs font-mono uppercase tracking-wider text-white/70 hover:text-white border border-white/15 hover:border-white/40 bg-black/40 backdrop-blur-md rounded-full transition-all duration-200"
-          >
-            Fiyatlarımız
-          </Link>
-          <Link
-            href="#fiyatlar"
-            className="px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs font-mono uppercase tracking-wider text-white bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/50 backdrop-blur-md rounded-full transition-all duration-200"
-          >
-            İletişim
-          </Link>
-        </div>
-      </div>
-
-      {/* Floating Bottom Workout Dock */}
-      <div className="pointer-events-none absolute bottom-4 sm:bottom-6 inset-x-0 z-20 flex flex-col items-center gap-2 sm:gap-2.5 px-3 sm:px-4">
-        <div className="pointer-events-auto flex items-center justify-center gap-1.5 sm:gap-3 p-1.5 sm:p-2 rounded-2xl bg-black/85 border border-white/10 backdrop-blur-xl shadow-2xl max-w-full overflow-x-auto">
-          {/* Exercise Pills */}
-          <div className="flex items-center gap-1 shrink-0">
-            {EXERCISES.map((ex) => {
-              const isActive = activeExercise === ex.key;
-              return (
-                <button
-                  key={ex.key}
-                  disabled={isPlaying}
-                  onClick={() => handleExerciseClick(ex.key)}
-                  className={cn(
-                    "relative px-2.5 sm:px-4 py-1.5 rounded-xl text-[11px] sm:text-xs font-medium font-mono uppercase tracking-wider transition-all duration-200 shrink-0",
-                    isActive
-                      ? "bg-red-600/25 text-red-300 border border-red-500/60 shadow-[0_0_15px_rgba(239,68,68,0.3)]"
-                      : "text-white/60 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/10",
-                    isPlaying && !isActive && "opacity-30 cursor-not-allowed"
-                  )}
-                >
-                  {ex.label}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="h-4 sm:h-5 w-px bg-white/10 shrink-0" />
-
-          {/* Rep Counter */}
-          <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 bg-white/5 rounded-xl border border-white/5 shrink-0">
-            <span className="text-base sm:text-lg font-bold font-mono text-white tabular-nums leading-none">
-              {String(repCount).padStart(2, "0")}
-            </span>
-            <span className="text-[9px] sm:text-[10px] uppercase font-mono tracking-widest text-white/40 leading-none">
-              Reps
-            </span>
-          </div>
-        </div>
-
-        {/* Minimal 360 Orbit Hint */}
-        <div className="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-white/30 select-none">
-          360° DRAG · SCROLL ZOOM
-        </div>
-      </div>
     </div>
   );
 }
+
+useGLTF.preload(CHARACTER_MODEL_PATH);
+useGLTF.preload(ENV_MODEL_PATH);
