@@ -1,22 +1,23 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Environment, OrbitControls, useAnimations, useGLTF, useProgress } from "@react-three/drei";
+import { ContactShadows, Environment, Html, OrbitControls, useAnimations, useGLTF, useProgress } from "@react-three/drei";
 import {
   AnimationAction,
-  Box3,
   Color,
   Group,
   LoopOnce,
   MathUtils,
   Mesh,
   MeshStandardMaterial,
-  Vector3,
 } from "three";
+import { cn } from "@/lib/utils";
 
-const MODEL_PATH = "/assets/gym_hero_character.glb";
-const TARGET_HEIGHT = 1.9;
+const CHARACTER_MODEL_PATH = "/assets/gym_hero_character.glb";
+const ENV_MODEL_PATH = "/assets/olympia-gym-hero.glb";
+const CHARACTER_SCALE = 10.85;
 
 const COLOR_REST = new Color(1, 1, 1);
 const COLOR_ACTIVE_BASE = new Color("#c8102e"); // Deep anatomical crimson preserving shadow crevices
@@ -28,10 +29,34 @@ const scratchColor = new Color();
 
 type ExerciseKey = "bicep" | "frontraise" | "squat";
 
-const EXERCISES: { key: ExerciseKey; label: string; actionName: string; highlightName: string }[] = [
-  { key: "bicep", label: "Bicep Curl", actionName: "BicepCurl", highlightName: "Bicep_Highlight" },
-  { key: "frontraise", label: "Front Raise", actionName: "FrontRaise", highlightName: "FrontRaise_Highlight" },
-  { key: "squat", label: "Squat", actionName: "Squat", highlightName: "Squat_Highlight" },
+const EXERCISES: {
+  key: ExerciseKey;
+  label: string;
+  muscleLabel: string;
+  actionName: string;
+  highlightName: string;
+}[] = [
+  {
+    key: "bicep",
+    label: "Bicep Curl",
+    muscleLabel: "BICEPS BRACHII",
+    actionName: "BicepCurl",
+    highlightName: "Bicep_Highlight",
+  },
+  {
+    key: "frontraise",
+    label: "Front Raise",
+    muscleLabel: "ANTERIOR DELTOID",
+    actionName: "FrontRaise",
+    highlightName: "FrontRaise_Highlight",
+  },
+  {
+    key: "squat",
+    label: "Squat",
+    muscleLabel: "QUADRICEPS & GLUTEUS",
+    actionName: "Squat",
+    highlightName: "Squat_Highlight",
+  },
 ];
 
 interface GymCharacterModelProps {
@@ -41,44 +66,9 @@ interface GymCharacterModelProps {
 
 function GymCharacterModel({ activeExercise, onRepComplete }: GymCharacterModelProps) {
   const groupRef = useRef<Group>(null);
-  const { scene, animations } = useGLTF(MODEL_PATH);
+  const { scene, animations } = useGLTF(CHARACTER_MODEL_PATH);
 
-  // The Hips translation track overrides its rest-pose position with values from a
-  // completely different coordinate reference, throwing the whole skeleton off (verified
-  // by inspecting the GLB directly: rest Hips.translation.z=5.99 vs animated range -0.16..0.02).
-  // Drop the position channel entirely so Hips keeps its rest position; only rotation animates.
-  const groundedAnimations = useMemo(() => {
-    return animations.map((clip) => {
-      const newClip = clip.clone();
-      newClip.tracks = newClip.tracks.filter(
-        (track) => !(track.name.endsWith(".position") && /hips/i.test(track.name)),
-      );
-      return newClip;
-    });
-  }, [animations]);
-
-  const { actions, mixer } = useAnimations(groundedAnimations, groupRef);
-
-  const { scale, position } = useMemo(() => {
-    // useGLTF caches this scene singleton; reset its transform before measuring
-    // so repeated measurements (e.g. across HMR reloads) don't compound.
-    scene.position.set(0, 0, 0);
-    scene.scale.set(1, 1, 1);
-    scene.updateMatrixWorld(true);
-
-    const box = new Box3().setFromObject(scene);
-    const size = box.getSize(new Vector3());
-    const scaleFactor = size.y > 0 ? TARGET_HEIGHT / size.y : 1;
-    const center = box.getCenter(new Vector3());
-    return {
-      scale: scaleFactor,
-      position: [-center.x * scaleFactor, -box.min.y * scaleFactor, -center.z * scaleFactor] as [
-        number,
-        number,
-        number,
-      ],
-    };
-  }, [scene]);
+  const { actions, mixer } = useAnimations(animations, groupRef);
 
   const highlightMaterials = useMemo(() => {
     const map: Partial<Record<string, MeshStandardMaterial>> = {};
@@ -91,6 +81,20 @@ function GymCharacterModel({ activeExercise, onRepComplete }: GymCharacterModelP
       });
     });
     return map;
+  }, [scene]);
+
+  useEffect(() => {
+    // Align rest-pose Hips translation with initial animated frame coordinates
+    const hips = scene.getObjectByName("mixamorig:Hips");
+    if (hips) {
+      hips.position.set(0.002947, -0.008119, -10.158342);
+    }
+
+    scene.traverse((obj) => {
+      if ((obj as Mesh).isMesh) {
+        obj.castShadow = true;
+      }
+    });
   }, [scene]);
 
   useEffect(() => {
@@ -137,7 +141,7 @@ function GymCharacterModel({ activeExercise, onRepComplete }: GymCharacterModelP
   });
 
   useEffect(() => {
-    actions.Idle?.reset().fadeIn(0.3).play();
+    actions.Idle?.reset().play();
   }, [actions]);
 
   useEffect(() => {
@@ -167,10 +171,56 @@ function GymCharacterModel({ activeExercise, onRepComplete }: GymCharacterModelP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeExercise]);
 
-  return <primitive ref={groupRef} object={scene} scale={scale} position={position} />;
+  const currentConfig = EXERCISES.find((e) => e.key === activeExercise);
+
+  return (
+    <group ref={groupRef} scale={CHARACTER_SCALE} position={[0, 0, 0]}>
+      <primitive object={scene} />
+      <Html position={[0, 0.188, 0]} center distanceFactor={2.6} className="pointer-events-none select-none">
+        {activeExercise && currentConfig ? (
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/90 border border-red-500/60 backdrop-blur-md text-[10px] font-mono tracking-widest text-red-400 whitespace-nowrap shadow-[0_0_15px_rgba(239,68,68,0.4)]">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+            {currentConfig.muscleLabel}
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/70 border border-white/10 backdrop-blur-md text-[9px] font-mono tracking-widest text-white/40 whitespace-nowrap">
+            <span className="w-1 h-1 rounded-full bg-white/30" />
+            OLYMPIA ATHLETE
+          </div>
+        )}
+      </Html>
+    </group>
+  );
 }
 
-useGLTF.preload(MODEL_PATH);
+function GymEnvironment() {
+  const { scene } = useGLTF(ENV_MODEL_PATH);
+
+  useEffect(() => {
+    scene.traverse((obj) => {
+      if ((obj as Mesh).isMesh) {
+        const mesh = obj as Mesh;
+        mesh.receiveShadow = true;
+        const name = (mesh.name || "").toLowerCase();
+        if (
+          name.includes("rack") ||
+          name.includes("bench") ||
+          name.includes("plate") ||
+          name.includes("bar") ||
+          name.includes("tree") ||
+          name.includes("clip")
+        ) {
+          mesh.castShadow = true;
+        }
+      }
+    });
+  }, [scene]);
+
+  return <primitive object={scene} />;
+}
+
+useGLTF.preload(CHARACTER_MODEL_PATH);
+useGLTF.preload(ENV_MODEL_PATH);
 
 function LoadingOverlay() {
   const { active, progress } = useProgress();
@@ -211,10 +261,25 @@ export function HeroScene() {
     <div className="relative h-full w-full">
       <LoadingOverlay />
       <Canvas camera={{ position: [0, 1.2, 4.2], fov: 40 }} shadows>
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[3, 5, 2]} intensity={1.2} castShadow />
+        <ambientLight intensity={0.5} />
+        <directionalLight
+          position={[2.5, 4.5, 2]}
+          intensity={1.3}
+          castShadow
+          shadow-bias={-0.0004}
+          shadow-mapSize-width={1024}
+          shadow-mapSize-height={1024}
+        />
         <Suspense fallback={null}>
+          <GymEnvironment />
           <GymCharacterModel activeExercise={activeExercise} onRepComplete={handleRepComplete} />
+          <ContactShadows
+            position={[0, 0.002, 0]}
+            opacity={0.65}
+            scale={5}
+            blur={1.6}
+            far={1.5}
+          />
           <Environment preset="city" />
         </Suspense>
         <OrbitControls
@@ -222,34 +287,85 @@ export function HeroScene() {
           dampingFactor={0.07}
           target={[0, 0.9, 0]}
           minDistance={2}
-          maxDistance={8}
+          maxDistance={7.5}
+          maxPolarAngle={Math.PI / 2 - 0.02}
           enablePan={false}
         />
       </Canvas>
 
-      <div className="absolute left-8 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-2">
-        {EXERCISES.map((ex) => (
-          <button
-            key={ex.key}
-            disabled={isPlaying}
-            onClick={() => handleExerciseClick(ex.key)}
-            className="w-fit min-w-[190px] rounded-full border border-white/10 bg-white/5 px-4 py-2 text-left text-xs font-medium text-white/70 transition disabled:cursor-not-allowed disabled:opacity-40 enabled:hover:border-orange-500/40 enabled:hover:bg-orange-500/10 enabled:hover:text-white"
-          >
-            {ex.label}
-          </button>
-        ))}
-
-        <div className="mt-4">
-          <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-orange-500">{activeLabel}</div>
-          <div className="flex items-end gap-2">
-            <span className="text-5xl font-extrabold tabular-nums text-white">{repCount}</span>
-            <span className="mb-2 text-xs uppercase tracking-wide text-white/40">reps</span>
+      {/* Top Bar Overlay */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between p-4 sm:p-6 md:p-8">
+        {/* Brand & Hours */}
+        <div className="pointer-events-auto flex flex-col gap-0.5 sm:gap-1">
+          <span className="text-xs sm:text-sm font-extrabold font-mono tracking-wider text-white uppercase">
+            OLYMPIA GYM
+          </span>
+          <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] font-mono tracking-widest text-white/50">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span>09:00 — 23:00</span>
           </div>
+        </div>
+
+        {/* Navigation Action Buttons */}
+        <div className="pointer-events-auto flex items-center gap-2 sm:gap-3">
+          <Link
+            href="/iletisim"
+            className="px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs font-mono uppercase tracking-wider text-white/70 hover:text-white border border-white/15 hover:border-white/40 bg-black/40 backdrop-blur-md rounded-full transition-all duration-200"
+          >
+            Fiyatlarımız
+          </Link>
+          <Link
+            href="/iletisim"
+            className="px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs font-mono uppercase tracking-wider text-white bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/50 backdrop-blur-md rounded-full transition-all duration-200"
+          >
+            İletişim
+          </Link>
         </div>
       </div>
 
-      <div className="pointer-events-none absolute bottom-6 left-1/2 z-10 -translate-x-1/2 text-[10px] uppercase tracking-[0.15em] text-white/30">
-        Drag to orbit · Scroll to zoom
+      {/* Floating Bottom Workout Dock */}
+      <div className="pointer-events-none absolute bottom-4 sm:bottom-6 inset-x-0 z-20 flex flex-col items-center gap-2 sm:gap-2.5 px-3 sm:px-4">
+        <div className="pointer-events-auto flex items-center justify-center gap-1.5 sm:gap-3 p-1.5 sm:p-2 rounded-2xl bg-black/85 border border-white/10 backdrop-blur-xl shadow-2xl max-w-full overflow-x-auto">
+          {/* Exercise Pills */}
+          <div className="flex items-center gap-1 shrink-0">
+            {EXERCISES.map((ex) => {
+              const isActive = activeExercise === ex.key;
+              return (
+                <button
+                  key={ex.key}
+                  disabled={isPlaying}
+                  onClick={() => handleExerciseClick(ex.key)}
+                  className={cn(
+                    "relative px-2.5 sm:px-4 py-1.5 rounded-xl text-[11px] sm:text-xs font-medium font-mono uppercase tracking-wider transition-all duration-200 shrink-0",
+                    isActive
+                      ? "bg-red-600/25 text-red-300 border border-red-500/60 shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+                      : "text-white/60 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/10",
+                    isPlaying && !isActive && "opacity-30 cursor-not-allowed"
+                  )}
+                >
+                  {ex.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="h-4 sm:h-5 w-px bg-white/10 shrink-0" />
+
+          {/* Rep Counter */}
+          <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 bg-white/5 rounded-xl border border-white/5 shrink-0">
+            <span className="text-base sm:text-lg font-bold font-mono text-white tabular-nums leading-none">
+              {String(repCount).padStart(2, "0")}
+            </span>
+            <span className="text-[9px] sm:text-[10px] uppercase font-mono tracking-widest text-white/40 leading-none">
+              Reps
+            </span>
+          </div>
+        </div>
+
+        {/* Minimal 360 Orbit Hint */}
+        <div className="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-white/30 select-none">
+          360° DRAG · SCROLL ZOOM
+        </div>
       </div>
     </div>
   );

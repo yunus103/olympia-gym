@@ -31,7 +31,7 @@ export function resolveLink(linkData?: CtaLink) {
 // TEMP: layout stripped down to isolated 3D model test — headline/CTA restored once the asset is validated.
 export function HeroSection(_props: HeroSectionProps) {
   return (
-    <section className="relative h-screen w-full bg-black">
+    <section className="relative h-[calc(100dvh-5rem)] min-h-[540px] w-full bg-black overflow-hidden">
       <HeroScene />
     </section>
   );
