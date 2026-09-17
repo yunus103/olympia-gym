@@ -1,326 +1,227 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { FaWhatsapp } from "react-icons/fa";
+import { RiMenu3Line, RiCloseLine } from "react-icons/ri";
 import { SanityImage } from "@/components/ui/SanityImage";
 import { Button } from "@/components/ui/button";
-import {
-  FaInstagram,
-  FaFacebook,
-  FaLinkedin,
-  FaYoutube,
-  FaTiktok,
-  FaPinterest,
-  FaWhatsapp,
-} from "react-icons/fa";
-import { FaXTwitter } from "react-icons/fa6";
-import type { IconType } from "react-icons";
-import { RiMenu3Line, RiCloseLine, RiArrowDownSLine, RiMailLine, RiPhoneLine } from "react-icons/ri";
 import { cn } from "@/lib/utils";
-
-import { SanityImage as SanityImageType, NavItem, SocialLink } from "@/types";
-
-const socialIconMap: Record<string, IconType> = {
-  instagram: FaInstagram,
-  facebook: FaFacebook,
-  twitter: FaXTwitter,
-  linkedin: FaLinkedin,
-  youtube: FaYoutube,
-  tiktok: FaTiktok,
-  pinterest: FaPinterest,
-  whatsapp: FaWhatsapp,
-};
-
-export interface HeaderContactInfo {
-  phone?: string;
-  email?: string;
-  whatsappNumber?: string;
-  address?: string;
-}
+import { SanityImage as SanityImageType, NavItem } from "@/types";
 
 export interface HeaderProps {
   siteName?: string;
   logo?: SanityImageType;
   links?: NavItem[];
-  contactInfo?: HeaderContactInfo;
-  socialLinks?: SocialLink[];
+  whatsappNumber?: string;
+  whatsappLabel?: string;
+  phone?: string;
+  hoursLine?: string;
 }
 
-function resolveHref(item: NavItem): string {
-  return item.href || "#";
+const SCROLLED_AT = 40;
+
+function useScrolled() {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > SCROLLED_AT);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  return scrolled;
 }
 
-export function Header({
-  siteName,
-  logo,
-  links = [],
-  contactInfo,
-  socialLinks = [],
-}: HeaderProps) {
-  const pathname = usePathname();
-  const router = useRouter();
+// Highlights the nav link whose section currently occupies the upper part of the viewport.
+function useActiveSection(links: NavItem[]) {
+  const [active, setActive] = useState<string | null>(null);
+  const ids = links.map((l) => l.href).filter((h) => h.startsWith("#")).join(",");
+
+  useEffect(() => {
+    const sections = ids
+      .split(",")
+      .filter(Boolean)
+      .map((h) => document.getElementById(h.slice(1)))
+      .filter((el): el is HTMLElement => el !== null);
+    if (sections.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting);
+        if (visible.length > 0) setActive(`#${visible[0].target.id}`);
+      },
+      { rootMargin: "-20% 0px -70% 0px" }
+    );
+    sections.forEach((s) => observer.observe(s));
+    return () => observer.disconnect();
+  }, [ids]);
+
+  return active;
+}
+
+export function Header({ siteName, logo, links = [], whatsappNumber, whatsappLabel = "WhatsApp", phone, hoursLine }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const scrolled = useScrolled();
+  const activeHref = useActiveSection(links);
+  const whatsappHref = whatsappNumber ? `https://wa.me/${whatsappNumber.replace(/\D/g, "")}` : undefined;
 
-  // Sayfa değiştiğinde menüyü kapat
   useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
-
-  // Menü açıkken arka plan scroll kilidi
-  useEffect(() => {
-    if (menuOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    document.body.style.overflow = menuOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
   }, [menuOpen]);
 
-  // Escape tuşuna basıldığında menüyü kapat
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
-    };
-    if (menuOpen) {
-      window.addEventListener("keydown", handleKeyDown);
-      return () => window.removeEventListener("keydown", handleKeyDown);
-    }
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [menuOpen]);
 
-  const isActive = (item: NavItem) => {
-    const href = resolveHref(item);
-    if (href === "/" && pathname !== "/") return false;
-    return pathname.startsWith(href);
-  };
-
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-20 items-center justify-between px-4">
-        <Link
-          href="/"
-          prefetch={false}
-          onMouseEnter={() => router.prefetch("/")}
-          className="flex items-center group h-full"
-        >
-          <div className="relative flex items-center justify-start transition-all duration-200 group-hover:scale-[1.02] active:scale-95 h-full py-4 max-w-[250px] md:max-w-[450px]">
+    <>
+      <header
+        className={cn(
+          "relative w-full transition-colors duration-300",
+          scrolled && "bg-background/80 backdrop-blur-md"
+        )}
+      >
+        <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-18">
+          <Link href="/" prefetch={false} aria-label={siteName} className="flex h-full items-center py-3">
             {logo ? (
               <SanityImage
                 image={logo}
-                width={800}
-                height={200}
+                width={600}
+                height={160}
                 fit="max"
+                sizes="240px"
                 className="h-full w-auto object-contain object-left"
                 priority
               />
             ) : (
-              <span className="font-bold text-xl tracking-tight leading-none">{siteName}</span>
+              <span className="font-display text-2xl font-extrabold uppercase tracking-tight">{siteName}</span>
             )}
-          </div>
-        </Link>
+          </Link>
 
-        {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-6">
-          {links.map((item, i) => (
-            <DesktopNavItem key={i} item={item} active={isActive(item)} />
-          ))}
-        </nav>
+          <nav className="hidden items-center gap-7 md:flex" aria-label="Ana menü">
+            {links.map((item) => {
+              const isActive = item.href === activeHref;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  prefetch={false}
+                  target={item.openInNewTab ? "_blank" : undefined}
+                  rel={item.openInNewTab ? "noopener noreferrer" : undefined}
+                  className={cn(
+                    "relative py-1 font-display text-sm font-bold uppercase tracking-wide transition-colors hover:text-foreground",
+                    isActive ? "text-primary" : "text-muted-foreground"
+                  )}
+                >
+                  {item.label}
+                  <span
+                    className={cn(
+                      "absolute inset-x-0 -bottom-0.5 h-0.5 bg-primary transition-transform duration-300 origin-left",
+                      isActive ? "scale-x-100" : "scale-x-0"
+                    )}
+                  />
+                </Link>
+              );
+            })}
+            {whatsappHref && (
+              <Button size="sm" render={<a href={whatsappHref} target="_blank" rel="noopener noreferrer" />}>
+                <FaWhatsapp data-icon="inline-start" />
+                {whatsappLabel}
+              </Button>
+            )}
+          </nav>
 
-        {/* Mobile Controls */}
-        <div className="flex items-center gap-2 md:hidden">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label={menuOpen ? "Menüyü kapat" : "Menüyü aç"}
+            className="md:hidden"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Menüyü aç"
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
           >
-            {menuOpen ? <RiCloseLine size={20} /> : <RiMenu3Line size={20} />}
+            <RiMenu3Line className="size-6" />
           </Button>
         </div>
-      </div>
 
-      {/* Mobile Menu - Sağdan sola kayarak açılan tam ekran menü */}
+        {/* Amber LED line replaces the usual gray border once the header has a background */}
+        <div
+          aria-hidden
+          className={cn("led-divider absolute inset-x-0 bottom-0 transition-opacity duration-300", scrolled ? "opacity-100" : "opacity-0")}
+        />
+      </header>
+
       <AnimatePresence>
         {menuOpen && (
           <motion.div
             id="mobile-menu"
-            initial={{ x: "100%", opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: "100%", opacity: 0 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="fixed inset-x-0 top-20 bottom-0 h-[calc(100dvh-5rem)] bg-background/98 backdrop-blur-md z-40 md:hidden overflow-y-auto border-t"
-          >
-            <nav className="container mx-auto flex flex-col gap-2 px-6 py-6">
-              {links.map((item, i) => (
-                <div key={i} className="flex flex-col gap-1">
-                  <div className="flex items-center justify-between">
-                    <Link
-                      href={resolveHref(item)}
-                      prefetch={false}
-                      className={cn(
-                        "text-base font-medium py-2.5 transition-colors hover:text-primary",
-                        isActive(item) ? "text-primary font-semibold" : "text-foreground"
-                      )}
-                    >
-                      {item.label}
-                    </Link>
-                  </div>
-                  {item.subLinks && (
-                    <div className="flex flex-col gap-1 pl-4 border-l ml-1 mt-1">
-                      {item.subLinks.map((sub, j) => (
-                        <Link
-                          key={j}
-                          href={resolveHref(sub)}
-                          prefetch={false}
-                          className={cn(
-                            "text-sm font-medium py-2 transition-colors hover:text-primary",
-                            isActive(sub) ? "text-primary" : "text-muted-foreground"
-                          )}
-                        >
-                          {sub.label}
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {(contactInfo?.phone || contactInfo?.email || (socialLinks && socialLinks.length > 0)) && (
-                <div className="mt-8 pt-6 border-t flex flex-col gap-4">
-                  {contactInfo?.phone && (
-                    <a
-                      href={`tel:${contactInfo.phone}`}
-                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      <RiPhoneLine className="shrink-0" />
-                      {contactInfo.phone}
-                    </a>
-                  )}
-                  {contactInfo?.email && (
-                    <a
-                      href={`mailto:${contactInfo.email}`}
-                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      <RiMailLine className="shrink-0" />
-                      {contactInfo.email}
-                    </a>
-                  )}
-                  {socialLinks && socialLinks.length > 0 && (
-                    <div className="flex flex-wrap gap-2 pt-2">
-                      {socialLinks.map((social, i) => {
-                        const Icon = socialIconMap[social.platform];
-                        if (!Icon || !social.url) return null;
-                        return (
-                          <a
-                            key={i}
-                            href={social.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={social.platform}
-                            className="flex h-9 w-9 items-center justify-center rounded-full border text-muted-foreground hover:text-primary hover:border-primary transition-colors"
-                          >
-                            <Icon size={16} />
-                          </a>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-            </nav>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </header>
-  );
-}
-
-function DesktopNavItem({ item, active }: { item: NavItem; active: boolean }) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
-
-  // Alt menü linklerinden biri aktifse üst menüyü de aktif boyarız
-  const isSubActive = item.subLinks?.some(sub => pathname === resolveHref(sub));
-  const reallyActive = active || isSubActive;
-
-  if (!item.subLinks || item.subLinks.length === 0) {
-    return (
-      <Link
-        href={resolveHref(item)}
-        prefetch={false}
-        onMouseEnter={() => router.prefetch(resolveHref(item))}
-        target={item.openInNewTab ? "_blank" : undefined}
-        rel={item.openInNewTab ? "noopener noreferrer" : undefined}
-        className={cn(
-          "text-sm font-medium transition-colors hover:text-primary",
-          reallyActive ? "text-primary font-semibold" : "text-foreground/70"
-        )}
-      >
-        {item.label}
-      </Link>
-    );
-  }
-
-  return (
-    <div 
-      className="relative group"
-      onMouseEnter={() => setIsOpen(true)}
-      onMouseLeave={() => setIsOpen(false)}
-    >
-      <Link
-        href={resolveHref(item)}
-        prefetch={false}
-        onMouseEnter={() => router.prefetch(resolveHref(item))}
-        className={cn(
-          "flex items-center gap-1 text-sm font-medium transition-colors hover:text-primary",
-          reallyActive ? "text-primary font-semibold" : "text-foreground/70"
-        )}
-      >
-        {item.label}
-        <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
-          <RiArrowDownSLine size={16} />
-        </motion.span>
-      </Link>
-      
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menü"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute left-0 top-full pt-4 min-w-[200px]"
+            className="fixed inset-0 z-50 flex flex-col bg-background bg-honeycomb md:hidden"
           >
-            <div className="bg-popover border rounded-xl shadow-xl p-2 overflow-hidden">
-              {item.subLinks.map((sub, j) => {
-                const subActive = pathname === resolveHref(sub);
-                return (
-                  <Link
-                    key={j}
-                    href={resolveHref(sub)}
-                    prefetch={false}
-                    onMouseEnter={() => router.prefetch(resolveHref(sub))}
-                    target={sub.openInNewTab ? "_blank" : undefined}
-                    rel={sub.openInNewTab ? "noopener noreferrer" : undefined}
-                    className={cn(
-                      "flex items-center px-4 py-2.5 text-sm font-medium rounded-lg hover:bg-muted transition-colors",
-                      subActive ? "text-primary bg-primary/5" : "text-foreground/70"
-                    )}
-                  >
-                    {sub.label}
-                  </Link>
-                );
-              })}
+            <div className="container mx-auto flex h-16 items-center justify-end px-4">
+              <Button variant="ghost" size="icon" onClick={() => setMenuOpen(false)} aria-label="Menüyü kapat">
+                <RiCloseLine className="size-6" />
+              </Button>
             </div>
+
+            <nav className="container mx-auto flex flex-1 flex-col justify-center gap-1 px-4" aria-label="Mobil menü">
+              {links.map((item, i) => (
+                <motion.div
+                  key={item.href}
+                  initial={{ x: -24, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: -24, opacity: 0 }}
+                  transition={{ delay: 0.05 + i * 0.04, duration: 0.25, ease: "easeOut" }}
+                >
+                  <Link
+                    href={item.href}
+                    prefetch={false}
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-baseline gap-4 py-2"
+                  >
+                    <span className="font-display text-sm font-bold text-muted-foreground tabular-nums">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <span className="font-display text-[2.75rem] font-extrabold uppercase leading-none tracking-tight">
+                      {item.label}
+                    </span>
+                  </Link>
+                </motion.div>
+              ))}
+            </nav>
+
+            <div className="container mx-auto flex flex-col gap-4 px-4 pb-8">
+              {whatsappHref && (
+                <Button size="lg" className="w-full" render={<a href={whatsappHref} target="_blank" rel="noopener noreferrer" />}>
+                  <FaWhatsapp data-icon="inline-start" />
+                  {whatsappLabel}
+                </Button>
+              )}
+              {(hoursLine || phone) && (
+                <p className="flex flex-wrap gap-x-4 text-sm text-muted-foreground tabular-nums">
+                  {hoursLine && <span>{hoursLine}</span>}
+                  {phone && <a href={`tel:${phone.replace(/\s/g, "")}`} className="hover:text-foreground">{phone}</a>}
+                </p>
+              )}
+            </div>
+
+            <div aria-hidden className="led-divider" />
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }

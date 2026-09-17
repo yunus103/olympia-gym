@@ -1,143 +1,108 @@
 import Link from "next/link";
-import {
-  FaInstagram,
-  FaFacebook,
-  FaLinkedin,
-  FaYoutube,
-  FaTiktok,
-  FaPinterest,
-  FaWhatsapp,
-} from "react-icons/fa";
-import { FaXTwitter } from "react-icons/fa6";
-import type { IconType } from "react-icons";
-import { RiMailLine, RiPhoneLine, RiMapPinLine } from "react-icons/ri";
-
+import { SanityImage } from "@/components/ui/SanityImage";
+import { formatOpeningHours } from "@/lib/openingHours";
 import { SiteSettings, Navigation } from "@/types";
 
-type NavItem = {
-  label: string;
-  href: string;
-  openInNewTab?: boolean;
+const SOCIAL_LABELS: Record<string, string> = {
+  instagram: "Instagram",
+  facebook: "Facebook",
+  twitter: "X",
+  linkedin: "LinkedIn",
+  youtube: "YouTube",
+  tiktok: "TikTok",
+  pinterest: "Pinterest",
+  whatsapp: "WhatsApp",
 };
-
-type SocialLink = {
-  platform: string;
-  url: string;
-};
-
-const socialIconMap: Record<string, IconType> = {
-  instagram: FaInstagram,
-  facebook: FaFacebook,
-  twitter: FaXTwitter,
-  linkedin: FaLinkedin,
-  youtube: FaYoutube,
-  tiktok: FaTiktok,
-  pinterest: FaPinterest,
-  whatsapp: FaWhatsapp,
-};
-
-function resolveHref(item: NavItem): string {
-  return item.href || "#";
-}
 
 export function Footer({ settings, navigation }: { settings: SiteSettings; navigation: Navigation }) {
-  const footerLinks: NavItem[] = navigation?.footerLinks || [];
-  const socialLinks: SocialLink[] = (settings?.socialLinks || []).filter((s: SocialLink) => s.url);
+  const links = navigation?.footerLinks ?? [];
+  const socials = (settings?.socialLinks ?? []).filter((s) => s.url);
   const contact = settings?.contactInfo;
-  const currentYear = new Date().getFullYear();
+  const hours = formatOpeningHours(settings?.openingHours);
+  const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t bg-background">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+    <footer className="relative bg-background">
+      <div aria-hidden className="led-divider" />
 
-          {/* Marka & İletişim */}
+      <div className="container mx-auto px-4 pt-16 pb-8 md:pt-24">
+        {/* Wall-lettering tagline: the footer's identity, low contrast by design */}
+        {settings?.siteTagline && (
+          <p
+            aria-hidden
+            className="mb-16 font-display text-5xl font-extrabold uppercase leading-[0.9] tracking-tight text-[#2e2e2e] select-none sm:text-7xl md:mb-24 md:text-8xl"
+          >
+            {settings.siteTagline}
+          </p>
+        )}
+
+        <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr_auto] md:gap-8">
           <div className="space-y-4">
-            <h3 className="font-bold text-lg">{settings?.siteName}</h3>
-            {settings?.siteTagline && (
-              <p className="text-sm text-muted-foreground">{settings.siteTagline}</p>
+            {settings?.logo ? (
+              <Link href="/" prefetch={false} aria-label={settings.siteName} className="inline-block">
+                <SanityImage image={settings.logo} width={480} height={128} fit="max" sizes="200px" className="h-10 w-auto object-contain object-left" />
+              </Link>
+            ) : (
+              <p className="font-display text-2xl font-extrabold uppercase tracking-tight">{settings?.siteName}</p>
             )}
-            <div className="space-y-2">
+            <div className="space-y-1 text-sm text-muted-foreground">
+              {contact?.address && <p className="whitespace-pre-line">{contact.address}</p>}
               {contact?.phone && (
-                <a
-                  href={`tel:${contact.phone}`}
-                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-                >
-                  <RiPhoneLine className="shrink-0" />
+                <a href={`tel:${contact.phone.replace(/\s/g, "")}`} className="block tabular-nums hover:text-foreground">
                   {contact.phone}
                 </a>
-              )}
-              {contact?.email && (
-                <a
-                  href={`mailto:${contact.email}`}
-                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-                >
-                  <RiMailLine className="shrink-0" />
-                  {contact.email}
-                </a>
-              )}
-              {contact?.address && (
-                <p className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <RiMapPinLine className="shrink-0 mt-0.5" />
-                  {contact.address}
-                </p>
               )}
             </div>
           </div>
 
-          {/* Footer Linkleri */}
-          {footerLinks.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="font-bold text-sm uppercase tracking-wider">Hızlı Linkler</h3>
-              <nav className="space-y-2">
-                {footerLinks.map((item, i) => (
-                  <Link
-                    key={i}
-                    href={resolveHref(item)}
-                    prefetch={false}
-                    target={item.openInNewTab ? "_blank" : undefined}
-                    rel={item.openInNewTab ? "noopener noreferrer" : undefined}
-                    className="block text-sm text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
-            </div>
+          {links.length > 0 && (
+            <nav aria-label="Footer menü" className="flex flex-col gap-2">
+              {links.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  prefetch={false}
+                  target={item.openInNewTab ? "_blank" : undefined}
+                  rel={item.openInNewTab ? "noopener noreferrer" : undefined}
+                  className="font-display text-sm font-bold uppercase tracking-wide text-muted-foreground hover:text-primary"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
           )}
 
-          {/* Sosyal Medya */}
-          {socialLinks.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="font-bold text-sm uppercase tracking-wider">Sosyal Medya</h3>
-              <div className="flex flex-wrap gap-3">
-                {socialLinks.map((social, i) => {
-                  const Icon = socialIconMap[social.platform];
-                  if (!Icon) return null;
-                  return (
-                    <a
-                      key={i}
-                      href={social.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={social.platform}
-                      className="flex h-9 w-9 items-center justify-center rounded-full border text-muted-foreground hover:text-primary hover:border-primary transition-colors"
-                    >
-                      <Icon size={16} />
-                    </a>
-                  );
-                })}
-              </div>
+          {hours.length > 0 && (
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm text-muted-foreground tabular-nums">
+              {hours.map((h) => (
+                <div key={h.label} className="contents">
+                  <dt>{h.label}</dt>
+                  <dd className="text-foreground">{h.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+
+          {socials.length > 0 && (
+            <div className="flex flex-col gap-2">
+              {socials.map((s) => (
+                <a
+                  key={s.url}
+                  href={s.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-display text-sm font-bold uppercase tracking-wide text-muted-foreground hover:text-primary"
+                >
+                  {SOCIAL_LABELS[s.platform] ?? s.platform} ↗
+                </a>
+              ))}
             </div>
           )}
         </div>
 
-        {/* Alt Bar */}
-        <div className="mt-12 border-t pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-muted-foreground w-full text-center sm:text-left">
-            © {currentYear} {settings?.siteName}. Tüm hakları saklıdır.
-          </p>
-        </div>
+        <p className="mt-16 border-t border-border pt-6 text-xs text-muted-foreground">
+          © {year} {settings?.siteName}
+        </p>
       </div>
     </footer>
   );

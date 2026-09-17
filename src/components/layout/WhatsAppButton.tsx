@@ -10,19 +10,13 @@ export function WhatsAppButton({ number }: { number: string }) {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="WhatsApp ile iletişime geç"
-      className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-green-500 text-white shadow-lg hover:bg-green-600"
-      initial={{ scale: 0 }}
-      animate={{ scale: 1 }}
-      transition={{ delay: 1, type: "spring" }}
-      whileHover={{ scale: 1.1 }}
+      className="fixed bottom-4 right-4 z-30 flex size-12 items-center justify-center rounded-full border border-border bg-card text-primary transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground md:bottom-6 md:right-6 md:size-14"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 1, duration: 0.3 }}
       whileTap={{ scale: 0.95 }}
     >
-      <motion.div
-        className="absolute h-full w-full rounded-full bg-green-500 opacity-75"
-        animate={{ scale: [1, 1.4, 1] }}
-        transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
-      />
-      <FaWhatsapp size={28} className="relative z-10" />
+      <FaWhatsapp className="size-6 md:size-7" />
     </motion.a>
   );
 }

@@ -1,34 +1,39 @@
 import { getLayoutData } from "@/lib/seo";
+import { cachedFetch } from "@/sanity/lib/client";
+import { announcementsQuery } from "@/sanity/lib/queries";
+import { formatOpeningHours } from "@/lib/openingHours";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { WhatsAppButton } from "@/components/layout/WhatsAppButton";
+import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
+import { Announcement } from "@/types";
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
-  const data = await getLayoutData();
-  const contact = data?.settings?.contactInfo;
+  const [data, announcements] = await Promise.all([
+    getLayoutData(),
+    cachedFetch<Announcement[]>(announcementsQuery, {}, { next: { tags: ["layout"] } }),
+  ]);
+  const settings = data?.settings;
+  const contact = settings?.contactInfo;
+  const hours = formatOpeningHours(settings?.openingHours);
 
   return (
     <>
-      <Header
-        siteName={data?.settings?.siteName}
-        logo={data?.settings?.logo}
-        links={data?.navigation?.headerLinks}
-        contactInfo={
-          contact
-            ? {
-                phone: contact.phone,
-                email: contact.email,
-                whatsappNumber: contact.whatsappNumber,
-              }
-            : undefined
-        }
-        socialLinks={data?.settings?.socialLinks}
-      />
+      {/* Bar + header share one fixed wrapper so the header offset stays correct when a bar is shown */}
+      <div className="fixed inset-x-0 top-0 z-40">
+        <AnnouncementBar items={announcements ?? []} />
+        <Header
+          siteName={settings?.siteName}
+          logo={settings?.logo}
+          links={data?.navigation?.headerLinks}
+          whatsappNumber={contact?.whatsappNumber}
+          phone={contact?.phone}
+          hoursLine={hours.length === 1 ? `${hours[0].label} ${hours[0].value}` : undefined}
+        />
+      </div>
       <main>{children}</main>
-      <Footer settings={data?.settings} navigation={data?.navigation} />
-      {contact?.whatsappNumber && (
-        <WhatsAppButton number={contact.whatsappNumber} />
-      )}
+      {settings && <Footer settings={settings} navigation={data.navigation} />}
+      {contact?.whatsappNumber && <WhatsAppButton number={contact.whatsappNumber} />}
     </>
   );
 }

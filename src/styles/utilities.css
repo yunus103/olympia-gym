@@ -20,3 +20,7 @@
 @utility chamfer {
   clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
 }
+
+@utility chamfer-none {
+  clip-path: none;
+}

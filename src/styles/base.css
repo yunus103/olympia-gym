@@ -6,7 +6,9 @@
     @apply bg-background text-foreground;
   }
   html {
-    @apply font-sans;
+    @apply font-sans scroll-smooth;
+    /* Anchor targets stop below the fixed header */
+    scroll-padding-top: 5rem;
   }
   h1,
   h2 {
