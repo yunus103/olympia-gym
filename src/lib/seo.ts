@@ -37,7 +37,7 @@ export const getLayoutData = cache(
 export async function buildMetadata(params: BuildMetadataParams = {}): Promise<Metadata> {
   const { settings } = await getLayoutData();
 
-  const siteName = settings?.siteName || "Site Adı";
+  const siteName = settings?.siteName ?? "";
   const siteTagline = settings?.siteTagline || "";
   const defaultMetaTitle = settings?.defaultSeo?.metaTitle || "";
   const isHomePage = params.canonicalPath === "/";

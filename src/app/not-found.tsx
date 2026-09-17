@@ -25,9 +25,6 @@ export default function NotFound() {
         <Button size="lg" render={<Link href="/" prefetch={false} />} className="px-8 transform transition hover:scale-105">
           Ana Sayfaya Git
         </Button>
-        <Button size="lg" variant="outline" render={<Link href="/iletisim" prefetch={false} />} className="px-8">
-          Bize Ulaşın
-        </Button>
       </div>
     </div>
   );

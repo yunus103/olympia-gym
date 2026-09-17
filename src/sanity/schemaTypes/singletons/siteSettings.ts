@@ -1,11 +1,21 @@
 import { defineField, defineType } from "sanity";
 
+const DAYS = [
+  { title: "Pazartesi", value: "monday" },
+  { title: "Salı", value: "tuesday" },
+  { title: "Çarşamba", value: "wednesday" },
+  { title: "Perşembe", value: "thursday" },
+  { title: "Cuma", value: "friday" },
+  { title: "Cumartesi", value: "saturday" },
+  { title: "Pazar", value: "sunday" },
+];
+
 export const siteSettingsType = defineType({
   name: "siteSettings",
   title: "Site Ayarları",
   type: "document",
   fields: [
-    defineField({ name: "siteName", title: "Site Adı", type: "string", validation: (Rule) => Rule.required() }),
+    defineField({ name: "siteName", title: "Site Adı", type: "string", initialValue: "Olympia Gym", validation: (Rule) => Rule.required() }),
     defineField({ name: "siteTagline", title: "Slogan", type: "string" }),
     defineField({
       name: "logo",
@@ -54,7 +64,47 @@ export const siteSettingsType = defineType({
           rows: 4,
           description: "Google Maps > Paylaş > Haritayı göm > HTML kodunu buraya yapıştır.",
         }),
+        defineField({
+          name: "mapsUrl",
+          title: "Google Maps Linki",
+          type: "url",
+          description: "Yol tarifi butonu için. Google Maps > Paylaş > Bağlantıyı kopyala.",
+        }),
       ],
+    }),
+    defineField({ name: "googleRating", title: "Google Puanı", type: "number", description: "Elle güncellenir. Örn: 4.9", validation: (Rule) => Rule.min(0).max(5) }),
+    defineField({ name: "googleReviewCount", title: "Google Yorum Sayısı", type: "number", validation: (Rule) => Rule.min(0).integer() }),
+    defineField({
+      name: "openingHours",
+      title: "Çalışma Saatleri",
+      type: "array",
+      description: "Bilgi şeridinde gösterilir ve arama motorlarına (JSON-LD) iletilir.",
+      of: [
+        {
+          type: "object",
+          name: "openingHour",
+          fields: [
+            defineField({
+              name: "day",
+              title: "Gün",
+              type: "string",
+              options: { list: DAYS.map((d) => ({ title: d.title, value: d.value })) },
+              validation: (Rule) => Rule.required(),
+            }),
+            defineField({ name: "open", title: "Açılış", type: "string", description: "SS:DD", initialValue: "09:00" }),
+            defineField({ name: "close", title: "Kapanış", type: "string", description: "SS:DD", initialValue: "00:00" }),
+            defineField({ name: "closed", title: "Kapalı", type: "boolean", initialValue: false }),
+          ],
+          preview: {
+            select: { day: "day", open: "open", close: "close", closed: "closed" },
+            prepare: ({ day, open, close, closed }) => ({
+              title: DAYS.find((d) => d.value === day)?.title ?? day,
+              subtitle: closed ? "Kapalı" : `${open} – ${close}`,
+            }),
+          },
+        },
+      ],
+      initialValue: DAYS.map((d) => ({ _type: "openingHour", day: d.value, open: "09:00", close: "00:00", closed: false })),
     }),
     defineField({ name: "socialLinks", title: "Sosyal Medya Hesapları", type: "array", of: [{ type: "socialLink" }] }),
     defineField({ name: "gaId", title: "Google Analytics ID", type: "string", description: "Örn: G-XXXXXXXXXX" }),

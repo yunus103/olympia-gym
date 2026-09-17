@@ -21,7 +21,9 @@ export const layoutQuery = groq`{
     logo ${imageFields},
     logoHeight,
     favicon { asset->{ _id, url } },
-    contactInfo { phone, email, address, whatsappNumber, mapIframe },
+    contactInfo { phone, email, address, whatsappNumber, mapIframe, mapsUrl },
+    googleRating, googleReviewCount,
+    openingHours[] { day, open, close, closed },
     socialLinks[] { platform, url },
     gaId, gtmId, googleSearchConsoleId,
     defaultSeo { metaTitle, metaDescription },
@@ -33,170 +35,42 @@ export const layoutQuery = groq`{
   }
 }`;
 
-// ─── Sayfalar ──────────────────────────────────────────────────────────────────
+// ─── Ana Sayfa ─────────────────────────────────────────────────────────────────
 
 export const homePageQuery = groq`*[_type == "homePage"][0] {
-  heroTitle, heroSubtitle, heroCtaLabel,
-  heroCtaLink {
-    linkType,
-    manual,
-    internal->{ _type, "slug": slug.current }
-  },
-  heroImage ${imageFields},
-  aboutTitle, aboutSubtitle, aboutText,
+  heroTitle,
+  heroPrimaryCta { label, href },
+  heroWhatsappLabel,
+  galleryTitle, gallerySubtitle,
+  galleryItems[] { _key, title, category, image ${imageFields} },
+  pricingTitle, pricingSubtitle, pricingCtaLabel, pricingPtNote,
+  aboutTitle, aboutBody,
   aboutImage ${imageFields},
-  aboutCtaLabel, aboutCtaLink,
-  servicesTitle, servicesSubtitle,
-  featuredServices[]-> {
-    title, slug,
-    mainImage ${imageFields}
-  },
-  projectsTitle, projectsSubtitle,
-  featuredProjects[]-> {
-    title, slug,
-    mainImage ${imageFields}
-  },
-  blogTitle, blogSubtitle,
-  featuredPosts[]-> {
-    title, slug, excerpt, publishedAt,
-    category->{ title, slug },
-    mainImage ${imageFields}
-  },
+  reviewsTitle, reviewsSubtitle,
+  faqTitle, faqSubtitle,
+  locationTitle,
   seo
 }`;
 
-export const aboutPageQuery = groq`*[_type == "aboutPage"][0] {
-  heroTitle, heroSubtitle,
-  heroImage ${imageFields},
-  pageTitle, pageSubtitle, body,
-  mainImage ${imageFields},
-  seo
+export const pricingPlansQuery = groq`*[_type == "pricingPlan"] | order(order asc, _createdAt asc) {
+  _id, duration, price, note
 }`;
 
-export const contactPageQuery = groq`*[_type == "contactPage"][0] {
-  heroTitle, heroSubtitle,
-  heroImage ${imageFields},
-  pageTitle, pageSubtitle, showForm, formTitle, successMessage,
-  "contactInfo": *[_type == "siteSettings"][0].contactInfo,
-  seo
+export const reviewsQuery = groq`*[_type == "review"] | order(order asc, _createdAt desc) {
+  _id, author, rating, text, date
 }`;
 
-export const blogPageQuery = groq`*[_type == "blogPage"][0] {
-  heroTitle, heroSubtitle,
-  heroImage ${imageFields},
-  pageTitle, pageSubtitle, ctaLabel, ctaLink, seo
+export const faqsQuery = groq`*[_type == "faq"] | order(order asc, _createdAt asc) {
+  _id, question, answer
 }`;
 
-export const servicesPageQuery = groq`*[_type == "servicesPage"][0] {
-  heroTitle, heroSubtitle,
-  heroImage ${imageFields},
-  pageTitle, pageSubtitle, ctaLabel, ctaLink, seo
+// Date filtering happens client-side: the page is ISR-cached, so a server-side
+// filter would keep an expired announcement on screen until the next revalidation.
+export const announcementsQuery = groq`*[_type == "announcement"] | order(_createdAt desc) {
+  _id, text, link, startsAt, endsAt
 }`;
 
-export const projectsPageQuery = groq`*[_type == "projectsPage"][0] {
-  heroTitle, heroSubtitle,
-  heroImage ${imageFields},
-  pageTitle, pageSubtitle, ctaLabel, ctaLink, seo
-}`;
-
-// ─── Blog ──────────────────────────────────────────────────────────────────────
-
-export const blogListQuery = groq`*[_type == "blogPost"] | order(publishedAt desc) {
-  title, slug, excerpt, publishedAt, category->{title, slug},
-  mainImage ${imageFields}
-}`;
-
-export const blogFallbackQuery = groq`*[_type == "blogPost"] | order(publishedAt desc)[0...3] {
-  title, slug, excerpt, publishedAt, category->{title, slug},
-  mainImage ${imageFields}
-}`;
-
-export const blogPostBySlugQuery = groq`*[_type == "blogPost" && slug.current == $slug][0] {
-  _id, _updatedAt, title, slug, publishedAt, excerpt, category->{_id, title, slug}, seoTags,
-  mainImage ${imageFields},
-  body[] {
-    ...,
-    _type == "image" => {
-      asset->{ _id, url, metadata { lqip, dimensions } },
-      alt, alignment, size, hotspot, crop
-    }
-  },
-  seo
-}`;
-
-export const blogCategoriesQuery = groq`*[_type == "blogCategory"] | order(title asc) {
-  _id, title, slug
-}`;
-
-export const blogListByCategorySlugQuery = groq`*[_type == "blogPost" && category->slug.current == $slug] | order(publishedAt desc) {
-  title, slug, excerpt, publishedAt, category->{title, slug},
-  mainImage ${imageFields}
-}`;
-
-export const blogRelatedPostsQuery = groq`*[_type == "blogPost" && category._ref == $categoryId && _id != $currentPostId] | order(publishedAt desc)[0...3] {
-  title, slug, excerpt, publishedAt, category->{title, slug},
-  mainImage ${imageFields}
-}`;
-
-// ─── Hizmetler ─────────────────────────────────────────────────────────────────
-
-export const serviceListQuery = groq`*[_type == "service"] | order(_createdAt asc) {
-  title, slug,
-  mainImage ${imageFields}
-}`;
-
-export const serviceFallbackQuery = groq`*[_type == "service"] | order(_createdAt asc)[0...3] {
-  title, slug,
-  mainImage ${imageFields}
-}`;
-
-export const serviceBySlugQuery = groq`*[_type == "service" && slug.current == $slug][0] {
-  title, slug,
-  mainImage ${imageFields},
-  body[] {
-    ...,
-    _type == "image" => { asset->{ _id, url, metadata { lqip, dimensions } }, alt, alignment, size, hotspot, crop }
-  },
-  seo
-}`;
-
-// ─── Projeler ──────────────────────────────────────────────────────────────────
-
-export const projectListQuery = groq`*[_type == "project"] | order(_createdAt asc) {
-  title, slug,
-  mainImage ${imageFields}
-}`;
-
-export const projectFallbackQuery = groq`*[_type == "project"] | order(_createdAt asc)[0...3] {
-  title, slug,
-  mainImage ${imageFields}
-}`;
-
-export const projectBySlugQuery = groq`*[_type == "project" && slug.current == $slug][0] {
-  title, slug,
-  mainImage ${imageFields},
-  body[] {
-    ...,
-    _type == "image" => { asset->{ _id, url, metadata { lqip, dimensions } }, alt, alignment, size, hotspot, crop }
-  },
-  seo
-}`;
-
-// ─── Sitemap ───────────────────────────────────────────────────────────────────
-
-export const allSlugsForSitemapQuery = groq`{
-  "pages": {
-    "home": *[_type == "homePage"][0] { _updatedAt, "noIndex": seo.noIndex },
-    "about": *[_type == "aboutPage"][0] { _updatedAt, "noIndex": seo.noIndex },
-    "contact": *[_type == "contactPage"][0] { _updatedAt, "noIndex": seo.noIndex },
-    "blog": *[_type == "blogPage"][0] { _updatedAt, "noIndex": seo.noIndex },
-    "services": *[_type == "servicesPage"][0] { _updatedAt, "noIndex": seo.noIndex },
-    "projects": *[_type == "projectsPage"][0] { _updatedAt, "noIndex": seo.noIndex }
-  },
-  "blogPosts": *[_type == "blogPost" && defined(slug.current) && !(seo.noIndex == true)] { "slug": slug.current, _updatedAt },
-  "services": *[_type == "service" && defined(slug.current) && !(seo.noIndex == true)] { "slug": slug.current, _updatedAt },
-  "projects": *[_type == "project" && defined(slug.current) && !(seo.noIndex == true)] { "slug": slug.current, _updatedAt }
-}`;
+export const homeSitemapQuery = groq`*[_type == "homePage"][0] { _updatedAt, "noIndex": seo.noIndex }`;
 
 // ─── Varsayılan SEO ────────────────────────────────────────────────────────────
 
@@ -210,6 +84,3 @@ export const defaultSeoQuery = groq`*[_type == "siteSettings"][0] {
   googleSearchConsoleId
 }`;
 
-export const blogSlugsQuery = groq`*[_type == "blogPost" && defined(slug.current)] { "slug": slug.current }`;
-export const projectSlugsQuery = groq`*[_type == "project" && defined(slug.current)] { "slug": slug.current }`;
-export const serviceSlugsQuery = groq`*[_type == "service" && defined(slug.current)] { "slug": slug.current }`;

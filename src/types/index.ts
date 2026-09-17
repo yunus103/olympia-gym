@@ -29,27 +29,6 @@ export interface SanitySlug {
   _type?: "slug";
 }
 
-export interface BlogCategory {
-  _id: string;
-  title: string;
-  slug: SanitySlug;
-}
-
-export interface BlogPost {
-  _id?: string;
-  _createdAt?: string;
-  _updatedAt?: string;
-  title: string;
-  slug: SanitySlug;
-  excerpt?: string;
-  publishedAt?: string;
-  category?: BlogCategory;
-  mainImage?: SanityImage;
-  body?: PortableTextBlock[];
-  seoTags?: string[];
-  seo?: SeoSettings;
-}
-
 export interface SocialLink {
   platform: string;
   url: string;
@@ -61,6 +40,14 @@ export interface ContactInfo {
   address?: string;
   whatsappNumber?: string;
   mapIframe?: string;
+  mapsUrl?: string;
+}
+
+export interface OpeningHour {
+  day: "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+  open?: string;
+  close?: string;
+  closed?: boolean;
 }
 
 export interface SiteSettings {
@@ -70,6 +57,9 @@ export interface SiteSettings {
   logoHeight?: number;
   favicon?: { asset: { url: string } };
   contactInfo?: ContactInfo;
+  googleRating?: number;
+  googleReviewCount?: number;
+  openingHours?: OpeningHour[];
   socialLinks?: SocialLink[];
   gaId?: string;
   gtmId?: string;
@@ -93,37 +83,6 @@ export interface Navigation {
   footerLinks?: NavItem[];
 }
 
-export interface Service {
-  _id?: string;
-  _createdAt?: string;
-  _updatedAt?: string;
-  title: string;
-  slug: SanitySlug;
-  mainImage?: SanityImage;
-  body?: PortableTextBlock[];
-  seo?: SeoSettings;
-}
-
-export interface Project {
-  _id?: string;
-  _createdAt?: string;
-  _updatedAt?: string;
-  title: string;
-  slug: SanitySlug;
-  mainImage?: SanityImage;
-  body?: PortableTextBlock[];
-  seo?: SeoSettings;
-}
-
-export interface CtaLink {
-  linkType: "internal" | "manual";
-  manual?: string;
-  internal?: {
-    _type: string;
-    slug?: string;
-  };
-}
-
 export interface SeoSettings {
   metaTitle?: string;
   metaDescription?: string;
@@ -132,61 +91,63 @@ export interface SeoSettings {
   noIndex?: boolean;
 }
 
-export interface BasePage {
-  heroTitle?: string;
-  heroSubtitle?: string;
-  heroImage?: SanityImage;
-  seo?: SeoSettings;
+export type GalleryCategory = "freeWeights" | "machines" | "cardio" | "general";
+
+export interface GalleryItem {
+  _key: string;
+  title?: string;
+  category?: GalleryCategory;
+  image: SanityImage;
 }
 
-export interface AboutPage extends BasePage {
-  pageTitle: string;
-  pageSubtitle?: string;
-  body?: PortableTextBlock[];
-  mainImage?: SanityImage;
+export interface PricingPlan {
+  _id: string;
+  duration: string;
+  price: number;
+  note?: string;
 }
 
-export interface ContactPage extends BasePage {
-  pageTitle: string;
-  pageSubtitle?: string;
-  showForm?: boolean;
-  formTitle?: string;
-  successMessage?: string;
-  contactInfo?: SiteSettings["contactInfo"];
+export interface Review {
+  _id: string;
+  author: string;
+  rating: number;
+  text: string;
+  date?: string;
 }
 
-export interface InnerPageWithCta extends BasePage {
-  pageTitle: string;
-  pageSubtitle?: string;
-  ctaLabel?: string;
-  ctaLink?: string;
+export interface Faq {
+  _id: string;
+  question: string;
+  answer: string;
 }
 
-export type BlogPage = InnerPageWithCta;
-export type ServicesPage = InnerPageWithCta;
-export type ProjectsPage = InnerPageWithCta;
+export interface Announcement {
+  _id: string;
+  text: string;
+  link?: string;
+  startsAt?: string;
+  endsAt?: string;
+}
 
 export interface HomePage {
   heroTitle: string;
-  heroSubtitle?: string;
-  heroImage?: SanityImage;
-  heroCtaLabel?: string;
-  heroCtaLink?: CtaLink;
+  heroPrimaryCta?: { label?: string; href?: string };
+  heroWhatsappLabel?: string;
+  galleryTitle?: string;
+  gallerySubtitle?: string;
+  galleryItems?: GalleryItem[];
+  pricingTitle?: string;
+  pricingSubtitle?: string;
+  pricingCtaLabel?: string;
+  pricingPtNote?: string;
   aboutTitle?: string;
-  aboutSubtitle?: string;
-  aboutText?: PortableTextBlock[];
+  aboutBody?: PortableTextBlock[];
   aboutImage?: SanityImage;
-  aboutCtaLabel?: string;
-  aboutCtaLink?: string;
-  servicesTitle?: string;
-  servicesSubtitle?: string;
-  featuredServices?: Service[];
-  projectsTitle?: string;
-  projectsSubtitle?: string;
-  featuredProjects?: Project[];
-  blogTitle?: string;
-  blogSubtitle?: string;
-  featuredPosts?: BlogPost[];
+  reviewsTitle?: string;
+  reviewsSubtitle?: string;
+  faqTitle?: string;
+  faqSubtitle?: string;
+  locationTitle?: string;
   seo?: SeoSettings;
 }
 

@@ -16,12 +16,13 @@ import {
   FaWhatsapp,
 } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
+import type { IconType } from "react-icons";
 import { RiMenu3Line, RiCloseLine, RiArrowDownSLine, RiMailLine, RiPhoneLine } from "react-icons/ri";
 import { cn } from "@/lib/utils";
 
 import { SanityImage as SanityImageType, NavItem, SocialLink } from "@/types";
 
-const socialIconMap: Record<string, React.ElementType> = {
+const socialIconMap: Record<string, IconType> = {
   instagram: FaInstagram,
   facebook: FaFacebook,
   twitter: FaXTwitter,

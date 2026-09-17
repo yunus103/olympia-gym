@@ -15,27 +15,11 @@ export const structure: StructureResolver = (S) =>
           ])
         ),
       S.divider(),
-      S.listItem()
-        .title("📄 Sabit Sayfalar")
-        .child(
-          S.list().title("Sabit Sayfalar").items([
-            S.listItem().title("🏠 Ana Sayfa").id("homePage").schemaType("homePage")
-              .child(S.document().schemaType("homePage").documentId("homePage")),
-            S.listItem().title("ℹ️ Hakkımızda").id("aboutPage").schemaType("aboutPage")
-              .child(S.document().schemaType("aboutPage").documentId("aboutPage")),
-            S.listItem().title("📬 İletişim").id("contactPage").schemaType("contactPage")
-              .child(S.document().schemaType("contactPage").documentId("contactPage")),
-            S.listItem().title("📝 Blog").id("blogPage").schemaType("blogPage")
-              .child(S.document().schemaType("blogPage").documentId("blogPage")),
-            S.listItem().title("🛠 Hizmetler").id("servicesPage").schemaType("servicesPage")
-              .child(S.document().schemaType("servicesPage").documentId("servicesPage")),
-            S.listItem().title("💼 Projeler").id("projectsPage").schemaType("projectsPage")
-              .child(S.document().schemaType("projectsPage").documentId("projectsPage")),
-          ])
-        ),
+      S.listItem().title("🏠 Ana Sayfa").id("homePage").schemaType("homePage")
+        .child(S.document().schemaType("homePage").documentId("homePage")),
       S.divider(),
-      S.documentTypeListItem("blogCategory").title("📝 Blog Kategorileri"),
-      S.documentTypeListItem("blogPost").title("📝 Blog Yazıları"),
-      S.documentTypeListItem("service").title("🛠 Hizmetler"),
-      S.documentTypeListItem("project").title("💼 Projeler"),
+      S.documentTypeListItem("pricingPlan").title("💰 Fiyat Planları"),
+      S.documentTypeListItem("review").title("⭐ Yorumlar"),
+      S.documentTypeListItem("faq").title("❓ SSS"),
+      S.documentTypeListItem("announcement").title("📢 Duyurular"),
     ]);

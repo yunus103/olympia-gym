@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Archivo, Big_Shoulders } from "next/font/google";
 import "./globals.css";
 import { buildMetadata, getLayoutData } from "@/lib/seo";
 
@@ -7,9 +7,17 @@ import { GoogleAnalytics, GoogleTagManager } from "@next/third-parties/google";
 import { JsonLd, organizationJsonLd, websiteJsonLd } from "@/components/seo/JsonLd";
 import NextTopLoader from "nextjs-toploader";
 
-const inter = Inter({
-  subsets: ["latin"],
+const archivo = Archivo({
+  subsets: ["latin", "latin-ext"],
   variable: "--font-sans",
+});
+
+const bigShoulders = Big_Shoulders({
+  axes: ["opsz"],
+  // next/font has no metric table for this family yet; disable to silence the build warning
+  adjustFontFallback: false,
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-display",
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -20,8 +28,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const { settings } = await getLayoutData();
 
   return (
-    <html lang="tr" className={inter.variable} suppressHydrationWarning>
-      <body className={inter.className}>
+    <html lang="tr" className={`${archivo.variable} ${bigShoulders.variable}`} suppressHydrationWarning>
+      <body>
         <noscript>
           <style>{`[data-fade-in]{opacity:1!important;transform:none!important}`}</style>
         </noscript>

@@ -7,13 +7,13 @@ import { singletonPlugin } from "./src/sanity/plugins/singletonPlugin";
 import { media } from "sanity-plugin-media";
 import { trTRLocale } from "@sanity/locale-tr-tr";
 
-const SINGLETONS = ["siteSettings", "navigation", "homePage", "aboutPage", "contactPage", "blogPage", "servicesPage", "projectsPage"];
+const SINGLETONS = ["siteSettings", "navigation", "homePage"];
 
 export default defineConfig({
   basePath: "/studio",
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID!,
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET!,
-  title: "Site Yönetim Paneli",
+  title: "Olympia Gym Yönetim Paneli",
   schema: { types: schemaTypes },
   plugins: [
     structureTool({ structure }),

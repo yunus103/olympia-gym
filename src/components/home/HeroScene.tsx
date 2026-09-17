@@ -309,13 +309,13 @@ export function HeroScene() {
         {/* Navigation Action Buttons */}
         <div className="pointer-events-auto flex items-center gap-2 sm:gap-3">
           <Link
-            href="/iletisim"
+            href="#fiyatlar"
             className="px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs font-mono uppercase tracking-wider text-white/70 hover:text-white border border-white/15 hover:border-white/40 bg-black/40 backdrop-blur-md rounded-full transition-all duration-200"
           >
             Fiyatlarımız
           </Link>
           <Link
-            href="/iletisim"
+            href="#fiyatlar"
             className="px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs font-mono uppercase tracking-wider text-white bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/50 backdrop-blur-md rounded-full transition-all duration-200"
           >
             İletişim

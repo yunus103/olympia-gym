@@ -7,121 +7,24 @@ type WebhookPayload = {
   _id?: unknown;
   _type?: unknown;
   operation?: unknown;
-  slug?: unknown;
-  previousSlug?: unknown;
-  categoryId?: unknown;
-  previousCategoryId?: unknown;
-  slugChanged?: unknown;
-  noIndexChanged?: unknown;
-  affectsList?: unknown;
 };
 
-type CollectionConfig = {
-  detailPrefix: string;
-  listTag: string;
+// Single-page site: every document type maps to a fixed set of cache tags.
+// "layout" = header/footer/settings (fetched on every page), "home" = home page sections.
+const tagsByType: Record<string, string[]> = {
+  siteSettings: ["layout", "home"],
+  navigation: ["layout"],
+  homePage: ["home"],
+  pricingPlan: ["home"],
+  review: ["home"],
+  faq: ["home"],
+  announcement: ["layout"],
 };
-
-const collectionConfig: Record<string, CollectionConfig> = {
-  blogPost: { detailPrefix: "blog:detail", listTag: "blog:list" },
-  service: { detailPrefix: "service:detail", listTag: "service:list" },
-  project: { detailPrefix: "project:detail", listTag: "project:list" },
-};
-
-const singletonTags: Record<string, string> = {
-  siteSettings: "layout",
-  navigation: "layout",
-  homePage: "home",
-  aboutPage: "about",
-  contactPage: "contact",
-  blogPage: "blogPage",
-  servicesPage: "servicesPage",
-  projectsPage: "projectsPage",
-};
-
-const sitemapPageTypes = new Set([
-  "homePage",
-  "aboutPage",
-  "contactPage",
-  "blogPage",
-  "servicesPage",
-  "projectsPage",
-]);
-
-function readSlug(value: unknown): string | undefined {
-  if (typeof value === "string" && value.length > 0) return value;
-  if (typeof value !== "object" || value === null) return undefined;
-
-  const current = (value as { current?: unknown }).current;
-  return typeof current === "string" && current.length > 0
-    ? current
-    : undefined;
-}
 
 function readOperation(value: unknown): WebhookOperation | undefined {
   return value === "create" || value === "update" || value === "delete"
     ? value
     : undefined;
-}
-
-function getRevalidationTags(
-  documentType: string,
-  operation: WebhookOperation,
-  payload: WebhookPayload
-): string[] {
-  const tags = new Set<string>();
-  const currentSlug = readSlug(payload.slug);
-  const previousSlug = readSlug(payload.previousSlug);
-  const categoryId =
-    typeof payload.categoryId === "string" ? payload.categoryId : undefined;
-  const previousCategoryId =
-    typeof payload.previousCategoryId === "string"
-      ? payload.previousCategoryId
-      : undefined;
-  const slugChanged = payload.slugChanged === true;
-  const noIndexChanged = payload.noIndexChanged === true;
-  const affectsList = payload.affectsList !== false;
-  const inventoryChanged =
-    operation === "create" ||
-    operation === "delete" ||
-    slugChanged ||
-    noIndexChanged;
-
-  const collection = collectionConfig[documentType];
-  if (collection) {
-    if (currentSlug) tags.add(`${collection.detailPrefix}:${currentSlug}`);
-    if (previousSlug) tags.add(`${collection.detailPrefix}:${previousSlug}`);
-
-    if (inventoryChanged || affectsList) {
-      tags.add(collection.listTag);
-      tags.add("home:featured");
-
-      if (documentType === "blogPost") {
-        if (categoryId) tags.add(`blog:related:${categoryId}`);
-        if (previousCategoryId) {
-          tags.add(`blog:related:${previousCategoryId}`);
-        }
-      }
-    }
-
-    if (inventoryChanged) tags.add("sitemap");
-    return [...tags];
-  }
-
-  if (documentType === "blogCategory") {
-    tags.add("blog:list");
-    tags.add("blog:categories");
-    tags.add("home:featured");
-    return [...tags];
-  }
-
-  const singletonTag = singletonTags[documentType];
-  if (singletonTag) tags.add(singletonTag);
-
-  if (sitemapPageTypes.has(documentType) && inventoryChanged) {
-    tags.add("sitemap");
-  }
-
-  return [...tags];
 }
 
 export async function POST(req: Request) {
@@ -191,7 +94,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const tags = getRevalidationTags(documentType, operation, payload);
+  const tags = tagsByType[documentType] ?? [];
   if (tags.length === 0) {
     return NextResponse.json({
       revalidated: false,

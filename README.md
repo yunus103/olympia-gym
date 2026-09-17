@@ -12,7 +12,6 @@ Modern ajanslar için hazır, production-grade Next.js 15 + Sanity v3 boilerplat
 | Sanity | v3 | Headless CMS |
 | Framer Motion | latest | Animasyonlar |
 | react-icons | latest | SVG ikon kütüphanesi |
-| Nodemailer | latest | İletişim formu e-postası |
 | Zod + @t3-oss/env-nextjs | latest | Type-safe env validasyonu |
 
 ---
@@ -71,16 +70,10 @@ _type in [
   "siteSettings",
   "navigation",
   "homePage",
-  "aboutPage",
-  "contactPage",
-  "blogPage",
-  "servicesPage",
-  "projectsPage",
-  "blogPost",
-  "blogCategory",
-  "service",
-  "project",
-  "faq"
+  "pricingPlan",
+  "review",
+  "faq",
+  "announcement"
 ]
 ```
 
@@ -90,38 +83,13 @@ _type in [
 {
   "_id": coalesce(after()._id, before()._id),
   "_type": coalesce(after()._type, before()._type),
-  "operation": delta::operation(),
-  "slug": after().slug.current,
-  "previousSlug": before().slug.current,
-  "categoryId": after().category._ref,
-  "previousCategoryId": before().category._ref,
-  "slugChanged": select(
-    delta::operation() == "update" => delta::changedAny(slug.current),
-    false
-  ),
-  "noIndexChanged": select(
-    delta::operation() == "update" => delta::changedAny(seo.noIndex),
-    false
-  ),
-  "affectsList": select(
-    delta::operation() != "update" => true,
-    _type == "blogPost" => delta::changedAny((title, slug.current, excerpt, publishedAt, category, mainImage, seo.noIndex)),
-    _type == "service" => delta::changedAny((title, slug.current, mainImage, seo.noIndex)),
-    _type == "project" => delta::changedAny((title, slug.current, mainImage, seo.noIndex)),
-    false
-  )
+  "operation": delta::operation()
 }
 ```
 
-Bu projection zorunludur. Delete olayında eski slug'ı, slug değişikliğinde hem eski hem yeni slug'ı endpoint'e taşır. Sitemap yalnızca create/delete, slug veya `noIndex` değişikliklerinde invalidate edilir.
+Tek sayfalı site: her `_type` sabit bir cache tag kümesine eşlenir (`src/app/api/revalidate/route.ts` → `tagsByType`). Yeni bir tip eklerken oraya ve yukarıdaki filtreye eklemeyi unutmayın.
 
 5. `.env.local` içinde `SANITY_WEBHOOK_SECRET` değerini güncelleyin. Uygulama `@sanity/webhook` paketi ile imzayı otomatik doğrular.
-
-### 4. Gmail SMTP Kurulumu (İletişim Formu)
-
-1. Google Hesabı → **Güvenlik** → **2 Adımlı Doğrulama** → etkinleştir
-2. **Uygulama Şifreleri** → Uygulama: Mail → Şifreyi kopyala
-3. `.env.local` içinde `SMTP_USER` ve `SMTP_PASS` değerlerini güncelle
 
 ---
 
@@ -143,15 +111,9 @@ Bu projection zorunludur. Delete olayında eski slug'ı, slug değişikliğinde 
 src/
 ├── app/
 │   ├── (site)/           # Kullanıcıya görünen tüm sayfalar
-│   │   ├── blog/[slug]/  # Dinamik blog detay sayfaları
 │   │   ├── page.tsx      # Ana sayfa
-│   │   ├── blog/         # Blog listesi hub sayfası
-│   │   ├── hizmetler/    # Hizmet hub ve [slug] detay sayfaları
-│   │   ├── projeler/     # Proje hub ve [slug] detay sayfaları
-│   │   ├── iletisim/     # İletişim sayfası
 │   ├── api/              # API route'ları
-│   │   ├── revalidate/   # ISR webhook
-│   │   └── contact/      # İletişim formu
+│   │   └── revalidate/   # ISR webhook
 │   ├── studio/           # Sanity Studio (embedded)
 │   ├── layout.tsx        # Root layout
 │   ├── not-found.tsx     # 404 sayfası
@@ -188,6 +150,5 @@ Aşağıdaki zengin arama sonuçları şemaları kod yazmaya gerek kalmadan tama
 *   **Site-wide Organization & WebSite:** Root Layout'ta `siteSettings`'ten gelen logo, iletişim ve sosyal ağ verileriyle otomatik oluşturulur.
 *   **Ekmek Kırıntıları (Breadcrumbs):** İç sayfalarda `<Breadcrumbs>` bileşeni çağrıldığı anda dinamik URL hiyerarşisi üzerinden `BreadcrumbList` şemasını oluşturup sayfaya enjekte eder.
 *   **Taranabilir Sıkça Sorulan Sorular (FAQ):** `<FAQ>` bileşeni kullanıldığında, arama botlarının kapalı cevapları da %100 okuyabilmesi için answers DOM'da saklanır ve `FAQPage` şeması dinamik olarak sayfaya basılır.
-*   **Blog Yazıları:** `blog/[slug]/page.tsx` rotasında dinamik `Article` şeması otomatik olarak basılır.
 *   **Hizmet & Projeler:** İlgili detay sayfalarında `Service` ve `CreativeWork` şemaları otomatik olarak yer alır.
 
