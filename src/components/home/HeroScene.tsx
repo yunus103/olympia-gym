@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, useAnimations, useGLTF, useProgress } from "@react-three/drei";
 import { Color, Group, LoopRepeat, MathUtils, Mesh, MeshStandardMaterial, SpotLight, Vector3 } from "three";
@@ -31,12 +31,39 @@ const CAMERA = {
   dampRelease: 3, // ~1.5 s settle after release
 };
 
-const COLOR_REST = new Color(1, 1, 1);
-// Skin color is never tinted; the "burning muscle" look comes from emissive only so it reads as glow under skin.
-const EMISSIVE_COLOR = new Color("#ff0a2e");
-const ROUGHNESS_REST = 0.5;
-const ROUGHNESS_ACTIVE = 0.4;
+// Muscle glow: the body GLB carries a per-vertex mask in COLOR_0 (R = biceps, G = front raise, B = squat,
+// soft 5 cm falloff baked in Blender). One skin material; the shader adds red emissive = mask · weights.
+const HIGHLIGHT_COLOR = new Color("#c00018");
+const SKIN_MATERIAL = "_Body_Low_SP_blinn1SG1";
 const scratchVec = new Vector3();
+
+function patchSkinMaterial(mat: MeshStandardMaterial, weights: Vector3) {
+  // GLTFLoader enables vertexColors whenever COLOR_0 exists; the mask must not tint the diffuse.
+  mat.vertexColors = false;
+  mat.needsUpdate = true;
+  mat.customProgramCacheKey = () => "olympia-muscle-highlight";
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uHighlightWeights = { value: weights };
+    shader.uniforms.uHighlightColor = { value: HIGHLIGHT_COLOR };
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nattribute vec3 color;\nvarying vec3 vHighlightMask;")
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvHighlightMask = color;");
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        "#include <common>\nuniform vec3 uHighlightWeights;\nuniform vec3 uHighlightColor;\nvarying vec3 vHighlightMask;"
+      )
+      // Darken the skin under the glow so the red reads saturated instead of salmon (red on top of tan).
+      .replace(
+        "#include <color_fragment>",
+        "#include <color_fragment>\nfloat highlightAmount = dot(vHighlightMask, uHighlightWeights);\ndiffuseColor.rgb *= 1.0 - 0.35 * clamp(highlightAmount, 0.0, 1.0);"
+      )
+      .replace(
+        "#include <emissivemap_fragment>",
+        "#include <emissivemap_fragment>\ntotalEmissiveRadiance += uHighlightColor * highlightAmount;"
+      );
+  };
+}
 
 interface PointerState {
   dragging: boolean;
@@ -65,34 +92,32 @@ function GymCharacter({
   const { scene, animations } = useGLTF(CHARACTER_MODEL_PATH);
   const { actions, mixer } = useAnimations(animations, groupRef);
 
-  const highlightMaterials = useMemo(() => {
-    const map: Partial<Record<string, MeshStandardMaterial>> = {};
-    const names = EXERCISES.map((e) => e.highlightName);
+  // Per-exercise glow weights (x = biceps, y = front raise, z = squat), read by the patched skin shader.
+  const highlightWeights = useRef(new Vector3());
+
+  useEffect(() => {
+    // Align rest-pose Hips translation with the animated frame so feet touch the floor.
+    scene.getObjectByName("mixamorig:Hips")?.position.set(0.002947, -0.008119, -10.158342);
+
+    // GLTFLoader splits the body into 4 meshes (skin + 3 highlight groups); collapse them onto one patched skin material.
+    const bodyMeshes: Mesh[] = [];
+    let skin: MeshStandardMaterial | undefined;
     scene.traverse((obj) => {
       const mesh = obj as Mesh;
       if (!mesh.isMesh) return;
       // Skinned bounding spheres come from the rest pose; culling drops limbs at frame edges.
       mesh.frustumCulled = false;
       mesh.castShadow = true;
-      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-      (mats as MeshStandardMaterial[]).forEach((m) => {
-        if (m?.name && names.includes(m.name)) map[m.name] = m;
-      });
+      const mat = mesh.material as MeshStandardMaterial;
+      if (mat.name === SKIN_MATERIAL) skin = mat;
+      if (mat.name === SKIN_MATERIAL || mat.name.endsWith("_Highlight")) bodyMeshes.push(mesh);
     });
-    return map;
-  }, [scene]);
-
-  useEffect(() => {
-    // Align rest-pose Hips translation with the animated frame so feet touch the floor.
-    scene.getObjectByName("mixamorig:Hips")?.position.set(0.002947, -0.008119, -10.158342);
-    Object.values(highlightMaterials).forEach((m) => {
-      if (!m) return;
-      m.color.copy(COLOR_REST);
-      m.emissive.copy(EMISSIVE_COLOR);
-      m.emissiveIntensity = 0;
-      m.roughness = ROUGHNESS_REST;
+    if (!skin) return;
+    patchSkinMaterial(skin, highlightWeights.current);
+    bodyMeshes.forEach((mesh) => {
+      mesh.material = skin as MeshStandardMaterial;
     });
-  }, [scene, highlightMaterials]);
+  }, [scene, highlightWeights]);
 
   useEffect(() => {
     actions.Idle?.reset().play();
@@ -132,17 +157,11 @@ function GymCharacter({
     }
 
     const t = delta * 6;
-    EXERCISES.forEach((ex) => {
-      const mat = highlightMaterials[ex.highlightName];
-      if (!mat) return;
-      if (ex.key === activeExercise) {
-        mat.roughness = MathUtils.lerp(mat.roughness, ROUGHNESS_ACTIVE, t);
-        mat.emissiveIntensity = MathUtils.lerp(mat.emissiveIntensity, 0.6 + 1.2 * Math.pow(contraction, 1.2), t);
-      } else {
-        mat.roughness = MathUtils.lerp(mat.roughness, ROUGHNESS_REST, t);
-        mat.emissiveIntensity = MathUtils.lerp(mat.emissiveIntensity, 0, t);
-      }
-    });
+    const active = 0.6 + 1.2 * Math.pow(contraction, 1.2);
+    const w = highlightWeights.current;
+    w.x = MathUtils.lerp(w.x, activeExercise === "bicep" ? active : 0, t);
+    w.y = MathUtils.lerp(w.y, activeExercise === "frontraise" ? active : 0, t);
+    w.z = MathUtils.lerp(w.z, activeExercise === "squat" ? active : 0, t);
   });
 
   return (
