@@ -81,6 +81,7 @@ interface PointerState {
 interface SceneProps {
   activeExercise: ExerciseKey | null;
   onRepComplete: () => void;
+  onDrag: () => void;
   onLoaded: () => void;
   isMobile: boolean;
   paused: boolean;
@@ -272,7 +273,7 @@ function LoadingOverlay({ onLoaded }: { onLoaded: () => void }) {
   );
 }
 
-export function HeroScene({ activeExercise, onRepComplete, onLoaded, isMobile, paused }: SceneProps) {
+export function HeroScene({ activeExercise, onRepComplete, onLoaded, onDrag, isMobile, paused }: SceneProps) {
   const pulseRef = useRef(0);
   const characterX = isMobile ? CHARACTER_X_MOBILE : CHARACTER_X;
   const pointer = useRef<PointerState>({
@@ -309,6 +310,7 @@ export function HeroScene({ activeExercise, onRepComplete, onLoaded, isMobile, p
   const handlePointerMove = (e: React.PointerEvent) => {
     const p = pointer.current;
     if (!p.dragging) return;
+    onDrag();
     p.yaw = MathUtils.clamp(p.yaw + (e.clientX - p.lastX) * CAMERA.dragSensitivity, -CAMERA.yawLimit, CAMERA.yawLimit);
     if (!isMobile) {
       p.pitch = MathUtils.clamp(p.pitch - (e.clientY - p.lastY) * CAMERA.dragSensitivity, CAMERA.pitchMin, CAMERA.pitchMax);

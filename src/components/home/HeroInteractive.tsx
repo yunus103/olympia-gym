@@ -19,6 +19,7 @@ export function HeroInteractive({ title, cta }: HeroInteractiveProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [inView, setInView] = useState(true);
   const [loaded, setLoaded] = useState(false);
+  const [dragged, setDragged] = useState(false);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -44,6 +45,7 @@ export function HeroInteractive({ title, cta }: HeroInteractiveProps) {
 
   const handleLoaded = useCallback(() => setLoaded(true), []);
   const handleRepComplete = useCallback(() => setRepCount((c) => c + 1), []);
+  const handleDrag = useCallback(() => setDragged(true), []);
 
   const selectExercise = (key: ExerciseKey) => {
     if (key === activeExercise) return;
@@ -57,6 +59,7 @@ export function HeroInteractive({ title, cta }: HeroInteractiveProps) {
         activeExercise={activeExercise}
         onRepComplete={handleRepComplete}
         onLoaded={handleLoaded}
+        onDrag={handleDrag}
         isMobile={isMobile}
         paused={!inView}
       />
@@ -72,6 +75,16 @@ export function HeroInteractive({ title, cta }: HeroInteractiveProps) {
         </div>
 
         <div className="flex flex-col items-center gap-3 md:h-full md:justify-end md:pb-10">
+          {/* Drag hint: hardcoded by design (hero scene exception), fades out after the first drag but stays in the DOM. */}
+          <p
+            aria-hidden
+            className={cn(
+              "text-xs uppercase tracking-wider text-muted-foreground transition-opacity duration-500",
+              loaded && !dragged ? "opacity-100" : "opacity-0"
+            )}
+          >
+            &harr; Sürükleyerek döndür
+          </p>
           <div className="pointer-events-auto flex items-stretch gap-2">
             <div role="radiogroup" aria-label="Egzersiz" className="chamfer flex bg-card p-1">
               {EXERCISES.map((ex) => {
@@ -84,7 +97,7 @@ export function HeroInteractive({ title, cta }: HeroInteractiveProps) {
                     aria-checked={active}
                     onClick={() => selectExercise(ex.key)}
                     className={cn(
-                      "font-display px-3 py-2 text-xs font-bold uppercase tracking-wide transition-colors sm:px-4 sm:text-sm",
+                      "font-display px-4 py-2.5 text-sm font-bold uppercase tracking-wide transition-colors",
                       active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
                     )}
                   >
