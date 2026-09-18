@@ -1,216 +1,194 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { SanityImage } from "@/components/ui/SanityImage";
-import { Expand, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { urlForImage } from "@/sanity/lib/image";
 import { SanityImage as SanityImageType } from "@/types";
 
-/**
- * Thumbnail'e hover edildiğinde tam boyutlu lightbox görselini önceden yükler.
- * Tarayıcı cache'e aldığı için tıklandığında anında açılır.
- */
-function prefetchLightboxImage(image: SanityImageType) {
+export type LightboxImage = { image: SanityImageType; title?: string; alt?: string };
+
+const FULL_QUALITY = 85;
+// next/image default `deviceSizes`; SanityImage's loader caps at 1920.
+const DEVICE_SIZES = [640, 750, 828, 1080, 1200, 1920];
+
+/** Mirrors the width next/image will pick for `sizes="100vw"`, so the prefetched URL is the one actually requested. */
+function lightboxWidth() {
+  const target = window.innerWidth * window.devicePixelRatio;
+  return DEVICE_SIZES.find((w) => w >= target) ?? DEVICE_SIZES[DEVICE_SIZES.length - 1];
+}
+
+/** Warms the browser cache with the full-size render so opening/navigating feels instant. */
+export function prefetchLightboxImage(image: SanityImageType) {
   if (typeof window === "undefined" || !image?.asset) return;
   try {
-    const url = urlForImage(image)
-      ?.auto("format")
-      .width(1920)
-      .fit("max") // Upscale'i önle
-      .quality(90)
-      .url();
-    if (!url) return;
-    if (document.querySelector(`link[href="${url}"]`)) return;
+    const url = urlForImage(image)?.auto("format").width(lightboxWidth()).fit("max").quality(FULL_QUALITY).url();
+    if (!url || document.querySelector(`link[href="${url}"]`)) return;
     const link = document.createElement("link");
     link.rel = "prefetch";
     link.as = "image";
     link.href = url;
     document.head.appendChild(link);
   } catch {
-    // prefetch başarısız olursa sessizce geç
+    // Prefetch is best-effort.
   }
 }
 
-interface LightboxGalleryProps {
-  images: SanityImageType[];
+interface LightboxProps {
+  images: LightboxImage[];
+  /** Index into `images`, or null when closed. */
+  index: number | null;
+  onClose: () => void;
+  onNavigate: (index: number) => void;
 }
 
-export function LightboxGallery({ images }: LightboxGalleryProps) {
-  const [selectedImage, setSelectedImage] = useState<number | null>(null);
-  const [direction, setDirection] = useState(0);
+const variants = {
+  enter: (direction: number) => ({ x: direction > 0 ? 300 : -300, opacity: 0, scale: 0.95 }),
+  center: { zIndex: 1, x: 0, opacity: 1, scale: 1 },
+  exit: (direction: number) => ({ zIndex: 0, x: direction < 0 ? 300 : -300, opacity: 0, scale: 0.95 }),
+};
 
-  const paginate = useCallback((newDirection: number) => {
-    setDirection(newDirection);
-    setSelectedImage((prev) => {
-      if (prev === null) return 0;
-      if (newDirection === 1) return prev < images.length - 1 ? prev + 1 : 0;
-      return prev > 0 ? prev - 1 : images.length - 1;
-    });
-  }, [images.length]);
+export function Lightbox({ images, index, onClose, onNavigate }: LightboxProps) {
+  const [direction, setDirection] = useState(0);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const open = index !== null;
+  const count = images.length;
+
+  const paginate = (dir: number) => {
+    if (index === null || count < 2) return;
+    setDirection(dir);
+    onNavigate((index + dir + count) % count);
+  };
+
+  // Scroll lock + focus move on open, focus restore on close.
+  useEffect(() => {
+    if (!open) return;
+    const opener = document.activeElement as HTMLElement | null;
+    document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
+    return () => {
+      document.body.style.overflow = "";
+      opener?.focus();
+    };
+  }, [open]);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (selectedImage === null) return;
-      if (e.key === "Escape") setSelectedImage(null);
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
       if (e.key === "ArrowLeft") paginate(-1);
       if (e.key === "ArrowRight") paginate(1);
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedImage, paginate]);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
-  const variants = {
-    enter: (direction: number) => ({
-      x: direction > 0 ? 300 : -300,
-      opacity: 0,
-      scale: 0.9,
-    }),
-    center: {
-      zIndex: 1,
-      x: 0,
-      opacity: 1,
-      scale: 1,
-    },
-    exit: (direction: number) => ({
-      zIndex: 0,
-      x: direction < 0 ? 300 : -300,
-      opacity: 0,
-      scale: 0.9,
-    }),
-  };
+  // Neighbours are prefetched so arrow navigation doesn't wait on the CDN.
+  useEffect(() => {
+    if (index === null || count < 2) return;
+    prefetchLightboxImage(images[(index + 1) % count].image);
+    prefetchLightboxImage(images[(index - 1 + count) % count].image);
+  }, [index, count, images]);
 
-  if (!images || images.length === 0) return null;
+  const current = index !== null ? images[index] : null;
 
   return (
-    <>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-16">
-        {images.map((image, i) => (
-          <div
-            key={i}
-            className="group relative cursor-pointer overflow-hidden rounded-sm aspect-[4/3] bg-backgroundLight"
-            onClick={() => setSelectedImage(i)}
-            onMouseEnter={() => prefetchLightboxImage(image)}
-          >
-            <SanityImage
-              image={image}
-              width={800}
-              height={600}
-              sizes="(max-width: 768px) 50vw, 33vw"
-              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-            />
-            {/* Hover overlay with icon */}
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-500 flex items-center justify-center">
-              <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white opacity-0 scale-50 group-hover:opacity-100 group-hover:scale-100 transition-all duration-500">
-                <Expand size={24} />
-              </div>
-            </div>
+    <AnimatePresence initial={false} custom={direction}>
+      {current && index !== null && (
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-label={current.title ?? "Galeri"}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[100] flex flex-col bg-background/95 touch-none"
+          onClick={onClose}
+        >
+          <div className="flex items-center justify-between px-4 py-4 md:px-8" onClick={(e) => e.stopPropagation()}>
+            <p className="font-display text-sm font-bold uppercase tracking-wide text-muted-foreground tabular-nums">
+              {index + 1} <span className="mx-1 text-border">/</span> {count}
+            </p>
+            <button
+              ref={closeRef}
+              type="button"
+              aria-label="Kapat"
+              onClick={onClose}
+              className="flex size-10 items-center justify-center text-muted-foreground transition-colors hover:text-primary focus-visible:text-primary focus-visible:outline-none"
+            >
+              <X className="size-7" />
+            </button>
           </div>
-        ))}
-      </div>
 
-      <AnimatePresence initial={false} custom={direction}>
-        {selectedImage !== null && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/95 px-4 md:px-12 backdrop-blur-sm touch-none"
-            onClick={() => setSelectedImage(null)}
-          >
-            {/* Top Bar */}
-            <div className="absolute top-0 left-0 right-0 p-6 md:p-10 flex justify-between items-center z-10">
-              <div className="text-white font-display text-sm tracking-[0.2em] uppercase opacity-70">
-                {selectedImage + 1}{" "}
-                <span className="mx-2 text-white/30">/</span> {images.length}
-              </div>
-              <button
-                className="w-12 h-12 flex items-center justify-center text-white/50 hover:text-white transition-colors cursor-pointer group"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedImage(null);
-                }}
-              >
-                <X
-                  size={36}
-                  className="transform group-hover:rotate-90 transition-transform duration-300"
-                />
-              </button>
-            </div>
-
-            {/* Navigation Arrows */}
-            {images.length > 1 && (
+          <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-4 md:px-20">
+            {count > 1 && (
               <>
                 <button
-                  className="hidden md:flex absolute left-4 md:left-10 top-1/2 -translate-y-1/2 w-16 h-16 items-center justify-center text-white/40 hover:text-white transition-all cursor-pointer z-20 group"
+                  type="button"
+                  aria-label="Önceki"
                   onClick={(e) => {
                     e.stopPropagation();
                     paginate(-1);
                   }}
+                  className="absolute left-2 top-1/2 z-20 hidden size-14 -translate-y-1/2 items-center justify-center text-muted-foreground transition-colors hover:text-primary md:left-4 md:flex"
                 >
-                  <ChevronLeft
-                    size={56}
-                    className="transform group-hover:-translate-x-2 transition-transform"
-                  />
+                  <ChevronLeft className="size-10" />
                 </button>
                 <button
-                  className="hidden md:flex absolute right-4 md:right-10 top-1/2 -translate-y-1/2 w-16 h-16 items-center justify-center text-white/40 hover:text-white transition-all cursor-pointer z-20 group"
+                  type="button"
+                  aria-label="Sonraki"
                   onClick={(e) => {
                     e.stopPropagation();
                     paginate(1);
                   }}
+                  className="absolute right-2 top-1/2 z-20 hidden size-14 -translate-y-1/2 items-center justify-center text-muted-foreground transition-colors hover:text-primary md:right-4 md:flex"
                 >
-                  <ChevronRight
-                    size={56}
-                    className="transform group-hover:translate-x-2 transition-transform"
-                  />
+                  <ChevronRight className="size-10" />
                 </button>
               </>
             )}
 
-            {/* Main Image Container */}
-            <div className="relative w-full h-[70vh] md:h-[85vh] flex items-center justify-center overflow-hidden">
-              <motion.div
-                key={selectedImage}
-                custom={direction}
-                variants={variants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{
-                  x: { type: "spring", stiffness: 300, damping: 30 },
-                  opacity: { duration: 0.3 },
-                }}
-                drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={1}
-                onDragEnd={(e, { offset, velocity }) => {
-                  if (offset.x > 100 || (offset.x > 20 && velocity.x > 500)) {
-                    paginate(-1);
-                  } else if (
-                    offset.x < -100 ||
-                    (offset.x < -20 && velocity.x < -500)
-                  ) {
-                    paginate(1);
-                  }
-                }}
-                className="absolute w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <SanityImage
-                  image={images[selectedImage]}
-                  fill
-                  fit="max"
-                  quality={90}
-                  sizes="(max-width: 1920px) 100vw, 1920px"
-                  className="pointer-events-none select-none"
-                  objectFit="contain"
-                />
-              </motion.div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+            <motion.div
+              key={index}
+              custom={direction}
+              variants={variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ x: { type: "spring", stiffness: 300, damping: 30 }, opacity: { duration: 0.25 } }}
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={1}
+              onDragEnd={(_, { offset, velocity }) => {
+                if (offset.x > 100 || (offset.x > 20 && velocity.x > 500)) paginate(-1);
+                else if (offset.x < -100 || (offset.x < -20 && velocity.x < -500)) paginate(1);
+              }}
+              className="absolute inset-0 cursor-grab active:cursor-grabbing"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <SanityImage
+                image={current.image}
+                alt={current.alt}
+                fill
+                fit="max"
+                quality={FULL_QUALITY}
+                sizes="100vw"
+                objectFit="contain"
+                noBlur
+                className="pointer-events-none select-none"
+              />
+            </motion.div>
+          </div>
+
+          <div className="px-4 py-4 text-center md:px-8">
+            {current.title && (
+              <p className="font-display text-base font-bold uppercase tracking-wide text-foreground md:text-lg">{current.title}</p>
+            )}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

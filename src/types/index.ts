@@ -93,11 +93,10 @@ export interface SeoSettings {
 
 export type GalleryCategory = "freeWeights" | "machines" | "cardio" | "general";
 
-export interface GalleryItem {
+export interface GalleryItem extends SanityImage {
   _key: string;
   title?: string;
   category?: GalleryCategory;
-  image: SanityImage;
 }
 
 export interface PricingPlan {

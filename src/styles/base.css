@@ -14,4 +14,9 @@
   h2 {
     @apply font-display;
   }
+  /* Tailwind v4 preflight resets buttons to `cursor: default`; we want the hand everywhere. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
 }

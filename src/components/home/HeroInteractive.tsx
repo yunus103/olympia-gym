@@ -68,7 +68,7 @@ export function HeroInteractive({ title, cta }: HeroInteractiveProps) {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[40%] bg-gradient-to-b from-background via-background/85 to-transparent md:h-[20%] md:from-background/70 md:via-transparent" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[45%] bg-gradient-to-t from-background via-background/60 to-transparent md:h-[35%] md:via-background/30" />
 
-      <div className="pointer-events-none absolute inset-0 mx-auto flex max-w-7xl flex-col justify-between px-4 pt-24 pb-20 md:grid md:grid-cols-2 md:items-center md:pt-18 md:pb-0">
+      <div className="pointer-events-none absolute inset-0 mx-auto flex max-w-7xl select-none flex-col justify-between px-4 pt-24 pb-20 md:grid md:grid-cols-2 md:items-center md:pt-18 md:pb-0">
         <div className="flex flex-col gap-8">
           {title}
           <div className="pointer-events-auto hidden md:block">{cta}</div>

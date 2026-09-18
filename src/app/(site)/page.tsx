@@ -4,6 +4,7 @@ import { homePageQuery } from "@/sanity/lib/queries";
 import { buildMetadata, getLayoutData } from "@/lib/seo";
 import { HeroSection } from "@/components/home/HeroSection";
 import { InfoStrip } from "@/components/home/InfoStrip";
+import { GallerySection } from "@/components/home/GallerySection";
 import { HomePage as HomePageType } from "@/types";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -25,6 +26,7 @@ export default async function HomePage() {
     <div className="flex flex-col w-full">
       <HeroSection data={data} />
       <InfoStrip settings={layout?.settings} />
+      <GallerySection title={data?.galleryTitle} subtitle={data?.gallerySubtitle} siteName={layout?.settings?.siteName} items={data?.galleryItems} />
     </div>
   );
 }

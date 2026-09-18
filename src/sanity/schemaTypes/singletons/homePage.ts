@@ -1,11 +1,5 @@
 import { defineField, defineType } from "sanity";
-
-const GALLERY_CATEGORIES = [
-  { title: "Serbest Ağırlık", value: "freeWeights" },
-  { title: "Makineler", value: "machines" },
-  { title: "Kardiyo", value: "cardio" },
-  { title: "Genel", value: "general" },
-];
+import { GALLERY_CATEGORIES } from "@/lib/galleryCategories";
 
 export const homePageType = defineType({
   name: "homePage",
@@ -52,19 +46,13 @@ export const homePageType = defineType({
       title: "Fotoğraflar",
       type: "array",
       group: "gallery",
+      description: "Birden fazla fotoğrafı sürükleyip bırakarak toplu yükleyebilirsiniz. Başlık ve kategori her fotoğrafa tıklanarak girilir.",
+      // Plain `image` items (not objects) so Studio supports drag-and-drop bulk upload; metadata lives in the image's own fields.
       of: [
         {
-          type: "object",
-          name: "galleryItem",
+          type: "image",
+          options: { hotspot: true },
           fields: [
-            defineField({
-              name: "image",
-              title: "Fotoğraf",
-              type: "image",
-              options: { hotspot: true },
-              fields: [defineField({ name: "alt", title: "Alt Metni", type: "string" })],
-              validation: (Rule) => Rule.required(),
-            }),
             defineField({ name: "title", title: "Başlık", type: "string", description: "Örn: Functional trainer" }),
             defineField({
               name: "category",
@@ -73,8 +61,16 @@ export const homePageType = defineType({
               options: { list: GALLERY_CATEGORIES, layout: "radio" },
               initialValue: "general",
             }),
+            defineField({ name: "alt", title: "Alt Metni", type: "string" }),
           ],
-          preview: { select: { title: "title", subtitle: "category", media: "image" } },
+          preview: {
+            select: { title: "title", category: "category", media: "asset" },
+            prepare: ({ title, category, media }) => ({
+              title: title || "Başlıksız",
+              subtitle: GALLERY_CATEGORIES.find((c) => c.value === category)?.title,
+              media,
+            }),
+          },
         },
       ],
     }),
