@@ -11,17 +11,20 @@ const CHARACTER_MODEL_PATH = "/assets/gym_hero_character.glb";
 const ENV_MODEL_PATH = "/assets/olympia-gym-hero.glb";
 const CHARACTER_SCALE = 10.85;
 // World-space x offset of the character; camera targets and character lights follow it.
+// Mobile trucks character + camera left together so the mural behind stays in the narrow frame.
 const CHARACTER_X = 0.3;
+const CHARACTER_X_MOBILE = -0.6;
 
 // Camera rig — tuned by trial on device, see docs/design-language.md §5.
 const CAMERA = {
   distance: 4.2,
+  distanceMobile: 5.0,
   basePitch: MathUtils.degToRad(4),
   fovDesktop: 40,
-  fovMobile: 34,
+  fovMobile: 40,
   // Negative x shifts the framing so the character sits in the right column on desktop.
   targetDesktop: new Vector3(CHARACTER_X - 1.2, 0.9, 0),
-  targetMobile: new Vector3(CHARACTER_X, 0.9, 0),
+  targetMobile: new Vector3(CHARACTER_X_MOBILE, 1.0, 0),
   yawLimit: MathUtils.degToRad(25),
   pitchMin: MathUtils.degToRad(-5),
   pitchMax: MathUtils.degToRad(10),
@@ -87,7 +90,8 @@ function GymCharacter({
   activeExercise,
   onRepComplete,
   pulseRef,
-}: Pick<SceneProps, "activeExercise" | "onRepComplete"> & { pulseRef: React.MutableRefObject<number> }) {
+  characterX,
+}: Pick<SceneProps, "activeExercise" | "onRepComplete"> & { pulseRef: React.MutableRefObject<number>; characterX: number }) {
   const groupRef = useRef<Group>(null);
   const { scene, animations } = useGLTF(CHARACTER_MODEL_PATH);
   const { actions, mixer } = useAnimations(animations, groupRef);
@@ -165,7 +169,7 @@ function GymCharacter({
   });
 
   return (
-    <group ref={groupRef} scale={CHARACTER_SCALE} position={[CHARACTER_X, 0, 0]}>
+    <group ref={groupRef} scale={CHARACTER_SCALE} position={[characterX, 0, 0]}>
       <primitive object={scene} />
     </group>
   );
@@ -186,13 +190,13 @@ function GymEnvironment() {
   return <primitive object={scene} />;
 }
 
-function CharacterSpot({ pulseRef }: { pulseRef: React.MutableRefObject<number> }) {
+function CharacterSpot({ pulseRef, characterX }: { pulseRef: React.MutableRefObject<number>; characterX: number }) {
   const ref = useRef<SpotLight>(null);
   useEffect(() => {
     // Light target is not part of the scene graph; update its matrix once by hand.
-    ref.current?.target.position.set(CHARACTER_X, 0.9, 0);
+    ref.current?.target.position.set(characterX, 0.9, 0);
     ref.current?.target.updateMatrixWorld();
-  }, []);
+  }, [characterX]);
   useFrame((_, delta) => {
     if (!ref.current) return;
     pulseRef.current = MathUtils.damp(pulseRef.current, 0, 4, delta);
@@ -201,7 +205,7 @@ function CharacterSpot({ pulseRef }: { pulseRef: React.MutableRefObject<number> 
   return (
     <spotLight
       ref={ref}
-      position={[CHARACTER_X + 0.6, 3.2, 2.2]}
+      position={[characterX + 0.6, 3.2, 2.2]}
       angle={0.5}
       penumbra={0.7}
       color="#ffd9a3"
@@ -233,7 +237,7 @@ function CameraRig({ pointer, isMobile }: { pointer: React.MutableRefObject<Poin
     const yaw = current.current.yaw;
     const pitch = CAMERA.basePitch + current.current.pitch;
     scratchVec.set(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
-    camera.position.copy(target).addScaledVector(scratchVec, CAMERA.distance);
+    camera.position.copy(target).addScaledVector(scratchVec, isMobile ? CAMERA.distanceMobile : CAMERA.distance);
     camera.lookAt(target);
   });
 
@@ -270,6 +274,7 @@ function LoadingOverlay({ onLoaded }: { onLoaded: () => void }) {
 
 export function HeroScene({ activeExercise, onRepComplete, onLoaded, isMobile, paused }: SceneProps) {
   const pulseRef = useRef(0);
+  const characterX = isMobile ? CHARACTER_X_MOBILE : CHARACTER_X;
   const pointer = useRef<PointerState>({
     dragging: false,
     yaw: 0,
@@ -339,12 +344,12 @@ export function HeroScene({ activeExercise, onRepComplete, onLoaded, isMobile, p
         <pointLight position={[-2.2, 2.4, -2.0]} intensity={20} distance={7} decay={2} color="#ffd9a3" />
         <pointLight position={[2.4, 2.4, -2.0]} intensity={20} distance={7} decay={2} color="#ffd9a3" />
         {/* Amber rim just behind the character; distance-limited so walls and floor stay untouched. */}
-        <pointLight position={[CHARACTER_X - 0.6, 2.2, -1.0]} intensity={25} distance={3.5} decay={2} color="#f2a93b" />
-        <CharacterSpot pulseRef={pulseRef} />
+        <pointLight position={[characterX - 0.6, 2.2, -1.0]} intensity={25} distance={3.5} decay={2} color="#f2a93b" />
+        <CharacterSpot pulseRef={pulseRef} characterX={characterX} />
         <CameraRig pointer={pointer} isMobile={isMobile} />
         <Suspense fallback={null}>
           <GymEnvironment />
-          <GymCharacter activeExercise={activeExercise} onRepComplete={onRepComplete} pulseRef={pulseRef} />
+          <GymCharacter activeExercise={activeExercise} onRepComplete={onRepComplete} pulseRef={pulseRef} characterX={characterX} />
           {!isMobile && <ContactShadows position={[CHARACTER_X, 0.002, 0]} opacity={0.65} scale={5} blur={1.6} far={1.5} />}
         </Suspense>
       </Canvas>

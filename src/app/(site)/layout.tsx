@@ -19,9 +19,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
 
   return (
     <>
-      {/* Bar + header share one fixed wrapper so the header offset stays correct when a bar is shown */}
       <div className="fixed inset-x-0 top-0 z-40">
-        <AnnouncementBar items={announcements ?? []} />
         <Header
           siteName={settings?.siteName}
           logo={settings?.logo}
@@ -32,6 +30,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         />
       </div>
       <main>{children}</main>
+      <AnnouncementBar items={announcements ?? []} />
       {settings && <Footer settings={settings} navigation={data.navigation} />}
       {contact?.whatsappNumber && <WhatsAppButton number={contact.whatsappNumber} />}
     </>

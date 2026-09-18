@@ -1,8 +1,9 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { RiCloseLine } from "react-icons/ri";
 import { Announcement } from "@/types";
+import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "announcement-dismissed";
 const CHANGE_EVENT = "announcement-dismissed-change";
@@ -54,6 +55,13 @@ export function AnnouncementBar({ items }: { items: Announcement[] }) {
   );
   const active = items.find((a) => a._id === activeId);
 
+  // Slide in after the hero has had a moment; the toast must not compete with the scene loading overlay.
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setShown(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
+
   if (!active) return null;
 
   const content = active.link ? (
@@ -65,18 +73,22 @@ export function AnnouncementBar({ items }: { items: Announcement[] }) {
   );
 
   return (
-    <div className="flex h-9 items-center bg-primary text-primary-foreground text-[13px]">
-      <div className="container mx-auto flex items-center justify-center gap-3 px-4">
-        <p className="truncate">{content}</p>
-        <button
-          type="button"
-          onClick={() => dismiss(active._id)}
-          aria-label="Duyuruyu kapat"
-          className="ml-auto shrink-0 p-1 hover:opacity-70"
-        >
-          <RiCloseLine size={16} />
-        </button>
-      </div>
+    <div
+      role="status"
+      className={cn(
+        "chamfer fixed bottom-4 left-4 right-20 z-30 flex items-center gap-3 border border-border border-l-2 border-l-primary bg-card px-4 py-3 text-[13px] transition-[opacity,transform] duration-500 md:bottom-6 md:left-6 md:right-auto md:max-w-sm",
+        shown ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+      )}
+    >
+      <p className="min-w-0 flex-1">{content}</p>
+      <button
+        type="button"
+        onClick={() => dismiss(active._id)}
+        aria-label="Duyuruyu kapat"
+        className="shrink-0 p-1 text-muted-foreground hover:text-foreground"
+      >
+        <RiCloseLine size={16} />
+      </button>
     </div>
   );
 }
