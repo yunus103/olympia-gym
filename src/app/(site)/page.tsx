@@ -6,6 +6,7 @@ import { HeroSection } from "@/components/home/HeroSection";
 import { InfoStrip } from "@/components/home/InfoStrip";
 import { GallerySection } from "@/components/home/GallerySection";
 import { PricingSection } from "@/components/home/PricingSection";
+import { AboutSection } from "@/components/home/AboutSection";
 import { HomePage as HomePageType, PricingPlan } from "@/types";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -30,6 +31,7 @@ export default async function HomePage() {
       <InfoStrip settings={layout?.settings} />
       <GallerySection title={data?.galleryTitle} subtitle={data?.gallerySubtitle} siteName={layout?.settings?.siteName} items={data?.galleryItems} />
       <PricingSection data={data} plans={plans} whatsappNumber={layout?.settings?.contactInfo?.whatsappNumber} />
+      <AboutSection data={data} />
     </div>
   );
 }
