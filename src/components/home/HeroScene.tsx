@@ -26,6 +26,8 @@ const CAMERA = {
   targetDesktop: new Vector3(CHARACTER_X - 1.2, 0.9, 0),
   targetMobile: new Vector3(CHARACTER_X_MOBILE, 1.0, 0),
   yawLimit: MathUtils.degToRad(25),
+  // Portrait horizontal FOV is narrow, so the env walls stay in frame at a wider yaw.
+  yawLimitMobile: MathUtils.degToRad(45),
   pitchMin: MathUtils.degToRad(-5),
   pitchMax: MathUtils.degToRad(10),
   parallax: MathUtils.degToRad(4),
@@ -311,7 +313,8 @@ export function HeroScene({ activeExercise, onRepComplete, onLoaded, onDrag, isM
     const p = pointer.current;
     if (!p.dragging) return;
     onDrag();
-    p.yaw = MathUtils.clamp(p.yaw + (e.clientX - p.lastX) * CAMERA.dragSensitivity, -CAMERA.yawLimit, CAMERA.yawLimit);
+    const yawLimit = isMobile ? CAMERA.yawLimitMobile : CAMERA.yawLimit;
+    p.yaw = MathUtils.clamp(p.yaw + (e.clientX - p.lastX) * CAMERA.dragSensitivity, -yawLimit, yawLimit);
     if (!isMobile) {
       p.pitch = MathUtils.clamp(p.pitch - (e.clientY - p.lastY) * CAMERA.dragSensitivity, CAMERA.pitchMin, CAMERA.pitchMax);
     }
