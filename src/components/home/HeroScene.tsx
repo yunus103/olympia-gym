@@ -59,7 +59,7 @@ function patchSkinMaterial(mat: MeshStandardMaterial, weights: Vector3) {
       // Darken the skin under the glow so the red reads saturated instead of salmon (red on top of tan).
       .replace(
         "#include <color_fragment>",
-        "#include <color_fragment>\nfloat highlightAmount = dot(vHighlightMask, uHighlightWeights);\ndiffuseColor.rgb *= 1.0 - 0.35 * clamp(highlightAmount, 0.0, 1.0);"
+        "#include <color_fragment>\nfloat highlightAmount = dot(vHighlightMask, uHighlightWeights);\ndiffuseColor.rgb *= 1.0 - 0.5 * clamp(highlightAmount, 0.0, 1.0);"
       )
       .replace(
         "#include <emissivemap_fragment>",
@@ -161,7 +161,7 @@ function GymCharacter({
       contraction = Math.sin(((action.time % duration) / duration) * Math.PI);
     }
 
-    const active = 0.6 + 1.2 * Math.pow(contraction, 1.2);
+    const active = 0.9 + 1.4 * Math.pow(contraction, 1.2);
     const w = highlightWeights.current;
     // damp (not lerp): a paused→resumed frameloop can hand us a huge delta; lerp with t > 1 extrapolates.
     w.x = MathUtils.damp(w.x, activeExercise === "bicep" ? active : 0, 6, delta);
