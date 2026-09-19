@@ -43,7 +43,8 @@ export const homePageQuery = groq`*[_type == "homePage"][0] {
   heroWhatsappLabel,
   galleryTitle, gallerySubtitle,
   galleryItems[] { _key, title, category, asset->{ _id, url, metadata { lqip, dimensions } }, alt, hotspot, crop },
-  pricingTitle, pricingSubtitle, pricingCtaLabel, pricingPtNote,
+  pricingTitle, pricingSubtitle,
+  pricingPtTitle, pricingPtText, pricingPtItems[] { _key, title, text }, pricingPtCtaLabel,
   aboutTitle, aboutBody,
   aboutImage ${imageFields},
   reviewsTitle, reviewsSubtitle,
@@ -53,7 +54,7 @@ export const homePageQuery = groq`*[_type == "homePage"][0] {
 }`;
 
 export const pricingPlansQuery = groq`*[_type == "pricingPlan"] | order(order asc, _createdAt asc) {
-  _id, duration, price, note
+  _id, duration, price, oldPrice, note
 }`;
 
 export const reviewsQuery = groq`*[_type == "review"] | order(order asc, _createdAt desc) {

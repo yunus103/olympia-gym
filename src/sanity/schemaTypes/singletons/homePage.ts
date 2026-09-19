@@ -78,8 +78,47 @@ export const homePageType = defineType({
     // Pricing
     defineField({ name: "pricingTitle", title: "Başlık", type: "string", group: "pricing", initialValue: "Üyelik Fiyatları" }),
     defineField({ name: "pricingSubtitle", title: "Alt Başlık", type: "text", rows: 2, group: "pricing", initialValue: "Paket yok, sürpriz yok. Süreyi seç, başla." }),
-    defineField({ name: "pricingCtaLabel", title: "Buton Metni", type: "string", group: "pricing", initialValue: "Kayıt için WhatsApp" }),
-    defineField({ name: "pricingPtNote", title: "Özel Ders Notu", type: "string", group: "pricing", initialValue: "Birebir özel ders için iletişime geç" }),
+    defineField({ name: "pricingPtTitle", title: "Özel Ders — Başlık", type: "string", group: "pricing", initialValue: "Birebir Özel Ders" }),
+    defineField({
+      name: "pricingPtText",
+      title: "Özel Ders — Açıklama",
+      type: "text",
+      rows: 2,
+      group: "pricing",
+      initialValue: "Kendine özel program, tam motivasyon ve %100 ilgi ile hedefine çok daha hızlı ulaş.",
+    }),
+    defineField({
+      name: "pricingPtItems",
+      title: "Özel Ders — Avantajlar",
+      type: "array",
+      group: "pricing",
+      of: [
+        {
+          type: "object",
+          name: "ptItem",
+          fields: [
+            defineField({ name: "title", title: "Başlık", type: "string", validation: (Rule) => Rule.required() }),
+            defineField({ name: "text", title: "Açıklama", type: "string" }),
+          ],
+          preview: { select: { title: "title", subtitle: "text" } },
+        },
+      ],
+      initialValue: [
+        { _type: "ptItem", title: "Kişiye özel program", text: "Hedeflerine uygun antrenman ve beslenme planı" },
+        { _type: "ptItem", title: "Daha hızlı sonuç", text: "Doğru teknik ve program ile maksimum verim" },
+        { _type: "ptItem", title: "Motivasyon ve destek", text: "Antrenörün her adımda yanında" },
+        { _type: "ptItem", title: "Doğru teknik, güvenli antrenman", text: "Sakatlık riskini azaltır, performansı artırır" },
+        { _type: "ptItem", title: "Zamanını verimli kullan", text: "Kısa sürede daha etkili antrenman" },
+        { _type: "ptItem", title: "Her seviyeye uygun", text: "Yeni başlayandan ileri seviyeye, program sana göre kurulur" },
+      ],
+    }),
+    defineField({
+      name: "pricingPtCtaLabel",
+      title: "Özel Ders — Link Metni",
+      type: "string",
+      group: "pricing",
+      initialValue: "Fiyat ve program için iletişime geç",
+    }),
 
     // About
     defineField({ name: "aboutTitle", title: "Başlık", type: "string", group: "about", initialValue: "Hakkında" }),

@@ -1,11 +1,12 @@
 import { Metadata } from "next";
 import { cachedFetch } from "@/sanity/lib/client";
-import { homePageQuery } from "@/sanity/lib/queries";
+import { homePageQuery, pricingPlansQuery } from "@/sanity/lib/queries";
 import { buildMetadata, getLayoutData } from "@/lib/seo";
 import { HeroSection } from "@/components/home/HeroSection";
 import { InfoStrip } from "@/components/home/InfoStrip";
 import { GallerySection } from "@/components/home/GallerySection";
-import { HomePage as HomePageType } from "@/types";
+import { PricingSection } from "@/components/home/PricingSection";
+import { HomePage as HomePageType, PricingPlan } from "@/types";
 
 export async function generateMetadata(): Promise<Metadata> {
   const data = await cachedFetch<HomePageType>(homePageQuery, {}, { next: { tags: ["home"] } });
@@ -17,9 +18,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
 // Sections are added one by one (see docs/implementation-plan.md step 5).
 export default async function HomePage() {
-  const [data, layout] = await Promise.all([
+  const [data, layout, plans] = await Promise.all([
     cachedFetch<HomePageType>(homePageQuery, {}, { next: { tags: ["home"] } }),
     getLayoutData(),
+    cachedFetch<PricingPlan[]>(pricingPlansQuery, {}, { next: { tags: ["home"] } }),
   ]);
 
   return (
@@ -27,6 +29,7 @@ export default async function HomePage() {
       <HeroSection data={data} />
       <InfoStrip settings={layout?.settings} />
       <GallerySection title={data?.galleryTitle} subtitle={data?.gallerySubtitle} siteName={layout?.settings?.siteName} items={data?.galleryItems} />
+      <PricingSection data={data} plans={plans} whatsappNumber={layout?.settings?.contactInfo?.whatsappNumber} />
     </div>
   );
 }

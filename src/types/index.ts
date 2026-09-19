@@ -103,7 +103,14 @@ export interface PricingPlan {
   _id: string;
   duration: string;
   price: number;
+  oldPrice?: number;
   note?: string;
+}
+
+export interface PtItem {
+  _key: string;
+  title: string;
+  text?: string;
 }
 
 export interface Review {
@@ -137,8 +144,10 @@ export interface HomePage {
   galleryItems?: GalleryItem[];
   pricingTitle?: string;
   pricingSubtitle?: string;
-  pricingCtaLabel?: string;
-  pricingPtNote?: string;
+  pricingPtTitle?: string;
+  pricingPtText?: string;
+  pricingPtItems?: PtItem[] | null;
+  pricingPtCtaLabel?: string;
   aboutTitle?: string;
   aboutBody?: PortableTextBlock[];
   aboutImage?: SanityImage;
