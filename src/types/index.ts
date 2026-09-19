@@ -138,7 +138,6 @@ export interface Announcement {
 export interface HomePage {
   heroTitle: string;
   heroPrimaryCta?: { label?: string; href?: string };
-  heroWhatsappLabel?: string;
   galleryTitle?: string;
   gallerySubtitle?: string;
   galleryItems?: GalleryItem[];

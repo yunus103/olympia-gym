@@ -56,7 +56,7 @@ export function Footer({ settings, navigation }: { settings: SiteSettings; navig
           </div>
 
           {links.length > 0 && (
-            <nav aria-label="Footer menü" className="flex flex-col gap-2">
+            <nav aria-label="Footer menü" className="flex flex-col items-start gap-2">
               {links.map((item) => (
                 <Link
                   key={item.href}
@@ -84,7 +84,7 @@ export function Footer({ settings, navigation }: { settings: SiteSettings; navig
           )}
 
           {socials.length > 0 && (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col items-start gap-2">
               {socials.map((s) => (
                 <a
                   key={s.url}
@@ -100,9 +100,16 @@ export function Footer({ settings, navigation }: { settings: SiteSettings; navig
           )}
         </div>
 
-        <p className="mt-16 border-t border-border pt-6 text-xs text-muted-foreground">
-          © {year} {settings?.siteName}
-        </p>
+        <div className="mt-16 flex flex-col gap-2 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:justify-between">
+          <p>© {year} {settings?.siteName}</p>
+          {/* Developer credit: intentionally hardcoded, not client-editable. */}
+          <p>
+            Tasarım ve Geliştirme:{" "}
+            <a href="https://yaytechstudio.com/" target="_blank" rel="noopener noreferrer" className="hover:text-primary">
+              Yaytech Studio
+            </a>
+          </p>
+        </div>
       </div>
     </footer>
   );

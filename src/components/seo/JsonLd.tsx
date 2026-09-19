@@ -1,5 +1,6 @@
 import { getSiteUrl } from "@/lib/utils";
-import { SiteSettings, SocialLink } from "@/types";
+import { urlForImage } from "@/sanity/lib/image";
+import { OpeningHour, SiteSettings, SocialLink } from "@/types";
 
 export function JsonLd({ data }: { data: Record<string, unknown> }) {
   return (
@@ -10,16 +11,49 @@ export function JsonLd({ data }: { data: Record<string, unknown> }) {
   );
 }
 
-export function organizationJsonLd(settings?: SiteSettings) {
+const DAY_OF_WEEK: Record<OpeningHour["day"], string> = {
+  monday: "Monday",
+  tuesday: "Tuesday",
+  wednesday: "Wednesday",
+  thursday: "Thursday",
+  friday: "Friday",
+  saturday: "Saturday",
+  sunday: "Sunday",
+};
+
+export function healthClubJsonLd(settings?: SiteSettings) {
+  const contact = settings?.contactInfo;
+  const logoUrl = settings?.logo ? urlForImage(settings.logo)?.url() : undefined;
+  const imageUrl = settings?.defaultOgImage ? urlForImage(settings.defaultOgImage)?.width(1200).height(630).url() : undefined;
+  const openingHours = settings?.openingHours?.filter((h) => !h.closed && h.open && h.close) ?? [];
+  const hasRating = settings?.googleRating && settings.googleReviewCount;
+
   return {
     "@context": "https://schema.org",
-    "@type": "Organization",
+    "@type": "HealthClub",
     name: settings?.siteName,
     url: getSiteUrl(),
-    ...(settings?.contactInfo?.phone && { telephone: settings.contactInfo.phone }),
-    ...(settings?.contactInfo?.email && { email: settings.contactInfo.email }),
-    ...(settings?.contactInfo?.address && {
-      address: { "@type": "PostalAddress", streetAddress: settings.contactInfo.address },
+    ...(logoUrl && { logo: logoUrl }),
+    ...(imageUrl && { image: imageUrl }),
+    ...(contact?.phone && { telephone: contact.phone }),
+    ...(contact?.email && { email: contact.email }),
+    ...(contact?.address && { address: { "@type": "PostalAddress", streetAddress: contact.address } }),
+    ...(contact?.mapsUrl && { hasMap: contact.mapsUrl }),
+    ...(openingHours.length > 0 && {
+      openingHoursSpecification: openingHours.map((h) => ({
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: DAY_OF_WEEK[h.day],
+        opens: h.open,
+        closes: h.close,
+      })),
+    }),
+    ...(hasRating && {
+      aggregateRating: {
+        "@type": "AggregateRating",
+        ratingValue: settings.googleRating,
+        reviewCount: settings.googleReviewCount,
+        bestRating: 5,
+      },
     }),
     sameAs: settings?.socialLinks?.map((s: SocialLink) => s.url).filter(Boolean) || [],
   };

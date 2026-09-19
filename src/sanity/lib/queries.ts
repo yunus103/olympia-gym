@@ -40,7 +40,6 @@ export const layoutQuery = groq`{
 export const homePageQuery = groq`*[_type == "homePage"][0] {
   heroTitle,
   heroPrimaryCta { label, href },
-  heroWhatsappLabel,
   galleryTitle, gallerySubtitle,
   galleryItems[] { _key, title, category, asset->{ _id, url, metadata { lqip, dimensions } }, alt, hotspot, crop },
   pricingTitle, pricingSubtitle,

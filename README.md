@@ -118,7 +118,6 @@ src/
 │   ├── sitemap.ts        # Dinamik sitemap
 │   └── robots.ts         # robots.txt
 ├── components/
-│   ├── forms/            # ContactForm
 │   ├── layout/           # Header, Footer, vb.
 │   ├── seo/              # JsonLd
 │   └── ui/               # SanityImage, RichText, FAQ, Breadcrumbs, FadeIn
@@ -148,5 +147,4 @@ Aşağıdaki zengin arama sonuçları şemaları kod yazmaya gerek kalmadan tama
 *   **Site-wide Organization & WebSite:** Root Layout'ta `siteSettings`'ten gelen logo, iletişim ve sosyal ağ verileriyle otomatik oluşturulur.
 *   **Ekmek Kırıntıları (Breadcrumbs):** İç sayfalarda `<Breadcrumbs>` bileşeni çağrıldığı anda dinamik URL hiyerarşisi üzerinden `BreadcrumbList` şemasını oluşturup sayfaya enjekte eder.
 *   **Taranabilir Sıkça Sorulan Sorular (FAQ):** `<FAQ>` bileşeni kullanıldığında, arama botlarının kapalı cevapları da %100 okuyabilmesi için answers DOM'da saklanır ve `FAQPage` şeması dinamik olarak sayfaya basılır.
-*   **Hizmet & Projeler:** İlgili detay sayfalarında `Service` ve `CreativeWork` şemaları otomatik olarak yer alır.
 

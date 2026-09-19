@@ -36,7 +36,6 @@ export const homePageType = defineType({
       ],
       initialValue: { label: "Fiyatları Gör", href: "#fiyatlar" },
     }),
-    defineField({ name: "heroWhatsappLabel", title: "WhatsApp Buton Metni", type: "string", group: "hero", initialValue: "WhatsApp" }),
 
     // Gallery
     defineField({ name: "galleryTitle", title: "Başlık", type: "string", group: "gallery", initialValue: "Salon" }),

@@ -4,7 +4,7 @@ import "./globals.css";
 import { buildMetadata, getLayoutData } from "@/lib/seo";
 
 import { GoogleAnalytics, GoogleTagManager } from "@next/third-parties/google";
-import { JsonLd, organizationJsonLd, websiteJsonLd } from "@/components/seo/JsonLd";
+import { JsonLd, healthClubJsonLd, websiteJsonLd } from "@/components/seo/JsonLd";
 import NextTopLoader from "nextjs-toploader";
 
 const archivo = Archivo({
@@ -44,7 +44,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
         {settings?.gtmId && <GoogleTagManager gtmId={settings.gtmId} />}
         {settings?.gaId && <GoogleAnalytics gaId={settings.gaId} />}
-        <JsonLd data={organizationJsonLd(settings)} />
+        <JsonLd data={healthClubJsonLd(settings)} />
         <JsonLd data={websiteJsonLd(settings)} />
         {children}
       </body>
