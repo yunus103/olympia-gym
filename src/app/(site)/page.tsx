@@ -8,6 +8,8 @@ import { GallerySection } from "@/components/home/GallerySection";
 import { PricingSection } from "@/components/home/PricingSection";
 import { AboutSection } from "@/components/home/AboutSection";
 import { ReviewsSection } from "@/components/home/ReviewsSection";
+import { FaqSection } from "@/components/home/FaqSection";
+import { LocationSection } from "@/components/home/LocationSection";
 import { HomePage as HomePageType, PricingPlan } from "@/types";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -34,6 +36,8 @@ export default async function HomePage() {
       <PricingSection data={data} plans={plans} whatsappNumber={layout?.settings?.contactInfo?.whatsappNumber} />
       <AboutSection data={data} />
       <ReviewsSection data={data} settings={layout?.settings} />
+      <FaqSection data={data} />
+      <LocationSection data={data} settings={layout?.settings} />
     </div>
   );
 }

@@ -205,6 +205,8 @@ export const homePageType = defineType({
 
     // Location
     defineField({ name: "locationTitle", title: "Başlık", type: "string", group: "location", initialValue: "Bizi Bul" }),
+    defineField({ name: "locationSubtitle", title: "Alt Başlık", type: "text", rows: 2, group: "location" }),
+    defineField({ name: "locationCtaLabel", title: "Yol Tarifi Buton Metni", type: "string", group: "location", initialValue: "Yol Tarifi Al" }),
 
     defineField({ name: "seo", title: "SEO", type: "seo", group: "seo" }),
   ],

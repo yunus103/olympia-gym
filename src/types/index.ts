@@ -158,6 +158,8 @@ export interface HomePage {
   faqSubtitle?: string;
   faqs?: Faq[] | null;
   locationTitle?: string;
+  locationSubtitle?: string;
+  locationCtaLabel?: string;
   seo?: SeoSettings;
 }
 

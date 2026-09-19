@@ -51,7 +51,7 @@ export const homePageQuery = groq`*[_type == "homePage"][0] {
   reviews[] { _key, author, rating, text, date },
   faqTitle, faqSubtitle,
   faqs[] { _key, question, answer },
-  locationTitle,
+  locationTitle, locationSubtitle, locationCtaLabel,
   seo
 }`;
 
