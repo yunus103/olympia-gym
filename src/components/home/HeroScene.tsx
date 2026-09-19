@@ -161,12 +161,12 @@ function GymCharacter({
       contraction = Math.sin(((action.time % duration) / duration) * Math.PI);
     }
 
-    const t = delta * 6;
     const active = 0.6 + 1.2 * Math.pow(contraction, 1.2);
     const w = highlightWeights.current;
-    w.x = MathUtils.lerp(w.x, activeExercise === "bicep" ? active : 0, t);
-    w.y = MathUtils.lerp(w.y, activeExercise === "frontraise" ? active : 0, t);
-    w.z = MathUtils.lerp(w.z, activeExercise === "squat" ? active : 0, t);
+    // damp (not lerp): a paused→resumed frameloop can hand us a huge delta; lerp with t > 1 extrapolates.
+    w.x = MathUtils.damp(w.x, activeExercise === "bicep" ? active : 0, 6, delta);
+    w.y = MathUtils.damp(w.y, activeExercise === "frontraise" ? active : 0, 6, delta);
+    w.z = MathUtils.damp(w.z, activeExercise === "squat" ? active : 0, 6, delta);
   });
 
   return (
