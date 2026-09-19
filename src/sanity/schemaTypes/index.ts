@@ -5,8 +5,6 @@ import { siteSettingsType } from "./singletons/siteSettings";
 import { navigationType } from "./singletons/navigation";
 import { homePageType } from "./singletons/homePage";
 import { pricingPlanType } from "./documents/pricingPlan";
-import { reviewType } from "./documents/review";
-import { faqType } from "./documents/faq";
 import { announcementType } from "./documents/announcement";
 
 export const schemaTypes = [
@@ -20,7 +18,5 @@ export const schemaTypes = [
   homePageType,
   // Collections
   pricingPlanType,
-  reviewType,
-  faqType,
   announcementType,
 ];

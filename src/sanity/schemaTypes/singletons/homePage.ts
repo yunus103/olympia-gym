@@ -155,10 +155,53 @@ export const homePageType = defineType({
     // Reviews
     defineField({ name: "reviewsTitle", title: "Başlık", type: "string", group: "reviews", initialValue: "Üyelerimiz Ne Diyor" }),
     defineField({ name: "reviewsSubtitle", title: "Alt Başlık", type: "text", rows: 2, group: "reviews", initialValue: "Google üzerindeki yorumlardan seçmeler." }),
+    defineField({
+      name: "reviews",
+      title: "Yorumlar",
+      type: "array",
+      group: "reviews",
+      description: "Google'dan elle seçilen 3 veya 6 yorum. Sürükleyerek sıralayın.",
+      of: [
+        {
+          type: "object",
+          name: "review",
+          fields: [
+            defineField({ name: "author", title: "Yazar", type: "string", validation: (Rule) => Rule.required() }),
+            defineField({ name: "rating", title: "Puan", type: "number", initialValue: 5, validation: (Rule) => Rule.required().min(1).max(5).integer() }),
+            defineField({ name: "text", title: "Yorum", type: "text", rows: 4, validation: (Rule) => Rule.required() }),
+            defineField({ name: "date", title: "Tarih", type: "date" }),
+          ],
+          preview: { select: { title: "author", subtitle: "text" } },
+        },
+      ],
+    }),
 
     // FAQ
     defineField({ name: "faqTitle", title: "Başlık", type: "string", group: "faq", initialValue: "Sık Sorulan Sorular" }),
     defineField({ name: "faqSubtitle", title: "Alt Başlık", type: "text", rows: 2, group: "faq" }),
+    defineField({
+      name: "faqs",
+      title: "Sorular",
+      type: "array",
+      group: "faq",
+      of: [
+        {
+          type: "object",
+          name: "faq",
+          fields: [
+            defineField({ name: "question", title: "Soru", type: "string", validation: (Rule) => Rule.required() }),
+            defineField({ name: "answer", title: "Cevap", type: "text", rows: 4, validation: (Rule) => Rule.required() }),
+          ],
+          preview: { select: { title: "question" } },
+        },
+      ],
+      initialValue: [
+        { _type: "faq", question: "Üyelik için ne gerekiyor?", answer: "Kimlik ve ilk ay ücreti yeterli. Kayıt salonda birkaç dakika sürer." },
+        { _type: "faq", question: "Deneme antrenmanı yapabilir miyim?", answer: "Evet. Gelmeden önce WhatsApp'tan haber verirseniz uygun bir saat ayarlarız." },
+        { _type: "faq", question: "Üyeliği dondurabilir miyim?", answer: "Sağlık veya seyahat gibi durumlarda üyeliğinizi belirli bir süre dondurabilirsiniz; detaylar için bize ulaşın." },
+        { _type: "faq", question: "Otopark var mı?", answer: "Plazanın önünde ücretsiz park alanı bulunuyor." },
+      ],
+    }),
 
     // Location
     defineField({ name: "locationTitle", title: "Başlık", type: "string", group: "location", initialValue: "Bizi Bul" }),

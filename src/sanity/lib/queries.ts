@@ -48,21 +48,15 @@ export const homePageQuery = groq`*[_type == "homePage"][0] {
   aboutTitle, aboutBody,
   aboutImage ${imageFields},
   reviewsTitle, reviewsSubtitle,
+  reviews[] { _key, author, rating, text, date },
   faqTitle, faqSubtitle,
+  faqs[] { _key, question, answer },
   locationTitle,
   seo
 }`;
 
 export const pricingPlansQuery = groq`*[_type == "pricingPlan"] | order(order asc, _createdAt asc) {
   _id, duration, price, oldPrice, note
-}`;
-
-export const reviewsQuery = groq`*[_type == "review"] | order(order asc, _createdAt desc) {
-  _id, author, rating, text, date
-}`;
-
-export const faqsQuery = groq`*[_type == "faq"] | order(order asc, _createdAt asc) {
-  _id, question, answer
 }`;
 
 // Date filtering happens client-side: the page is ISR-cached, so a server-side

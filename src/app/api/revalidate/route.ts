@@ -16,8 +16,6 @@ const tagsByType: Record<string, string[]> = {
   navigation: ["layout"],
   homePage: ["home"],
   pricingPlan: ["home"],
-  review: ["home"],
-  faq: ["home"],
   announcement: ["layout"],
 };
 

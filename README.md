@@ -71,8 +71,6 @@ _type in [
   "navigation",
   "homePage",
   "pricingPlan",
-  "review",
-  "faq",
   "announcement"
 ]
 ```

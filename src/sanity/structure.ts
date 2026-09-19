@@ -19,7 +19,5 @@ export const structure: StructureResolver = (S) =>
         .child(S.document().schemaType("homePage").documentId("homePage")),
       S.divider(),
       S.documentTypeListItem("pricingPlan").title("💰 Fiyat Planları"),
-      S.documentTypeListItem("review").title("⭐ Yorumlar"),
-      S.documentTypeListItem("faq").title("❓ SSS"),
       S.documentTypeListItem("announcement").title("📢 Duyurular"),
     ]);

@@ -114,7 +114,7 @@ export interface PtItem {
 }
 
 export interface Review {
-  _id: string;
+  _key: string;
   author: string;
   rating: number;
   text: string;
@@ -122,7 +122,7 @@ export interface Review {
 }
 
 export interface Faq {
-  _id: string;
+  _key: string;
   question: string;
   answer: string;
 }
@@ -153,8 +153,10 @@ export interface HomePage {
   aboutImage?: SanityImage;
   reviewsTitle?: string;
   reviewsSubtitle?: string;
+  reviews?: Review[] | null;
   faqTitle?: string;
   faqSubtitle?: string;
+  faqs?: Faq[] | null;
   locationTitle?: string;
   seo?: SeoSettings;
 }
