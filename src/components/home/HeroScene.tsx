@@ -4,8 +4,12 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, useAnimations, useGLTF, useProgress } from "@react-three/drei";
 import { Color, Group, LoopRepeat, MathUtils, Mesh, MeshStandardMaterial, SpotLight, Vector3 } from "three";
+import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLightUniformsLib.js";
 import { cn } from "@/lib/utils";
 import { EXERCISES, ExerciseKey } from "@/components/home/heroExercises";
+
+// Required once for rectAreaLight shading (LTC lookup textures).
+RectAreaLightUniformsLib.init();
 
 const CHARACTER_MODEL_PATH = "/assets/gym_hero_character.glb";
 const ENV_MODEL_PATH = "/assets/olympia-gym-hero.glb";
@@ -193,7 +197,7 @@ function GymEnvironment() {
   return <primitive object={scene} />;
 }
 
-function CharacterSpot({ pulseRef, characterX }: { pulseRef: React.MutableRefObject<number>; characterX: number }) {
+function CharacterSpot({ pulseRef, characterX, castShadow }: { pulseRef: React.MutableRefObject<number>; characterX: number; castShadow: boolean }) {
   const ref = useRef<SpotLight>(null);
   useEffect(() => {
     // Light target is not part of the scene graph; update its matrix once by hand.
@@ -212,7 +216,7 @@ function CharacterSpot({ pulseRef, characterX }: { pulseRef: React.MutableRefObj
       angle={0.5}
       penumbra={0.7}
       color="#ffd9a3"
-      castShadow
+      castShadow={castShadow}
       shadow-bias={-0.0004}
       shadow-mapSize={[1024, 1024]}
     />
@@ -337,7 +341,8 @@ export function HeroScene({ activeExercise, onRepComplete, onLoaded, onDrag, isM
     >
       <LoadingOverlay onLoaded={onLoaded} />
       <Canvas
-        shadows
+        // Shadow map pass is the priciest thing on phones and barely visible there; ContactShadows grounds the character instead.
+        shadows={!isMobile}
         dpr={[1, isMobile ? 1.5 : 2]}
         frameloop={paused ? "never" : "always"}
         camera={{ position: [0, 1.2, 4.2], fov: CAMERA.fovDesktop }}
@@ -348,14 +353,18 @@ export function HeroScene({ activeExercise, onRepComplete, onLoaded, onDrag, isM
         {/* Wall washes: bring out the equipment along the back wall without touching the character much. */}
         <pointLight position={[-2.2, 2.4, -2.0]} intensity={20} distance={7} decay={2} color="#ffd9a3" />
         <pointLight position={[2.4, 2.4, -2.0]} intensity={20} distance={7} decay={2} color="#ffd9a3" />
+        {/* Baseboard LED strip along the back wall: soft low fill on the equipment without a visible hotspot. */}
+        <rectAreaLight position={[0, 0.12, -3.85]} rotation={[0, Math.PI, 0]} width={7.5} height={0.08} intensity={3} color="#ffd9a3" />
+        <rectAreaLight position={[-4.4, 0.12, -1.0]} rotation={[0, -Math.PI / 2, 0]} width={6} height={0.08} intensity={3} color="#ffd9a3" />
+        <rectAreaLight position={[4.4, 0.12, -1.0]} rotation={[0, Math.PI / 2, 0]} width={6} height={0.08} intensity={3} color="#ffd9a3" />
         {/* Amber rim just behind the character; distance-limited so walls and floor stay untouched. */}
         <pointLight position={[characterX - 0.6, 2.2, -1.0]} intensity={25} distance={3.5} decay={2} color="#f2a93b" />
-        <CharacterSpot pulseRef={pulseRef} characterX={characterX} />
+        <CharacterSpot pulseRef={pulseRef} characterX={characterX} castShadow={!isMobile} />
         <CameraRig pointer={pointer} isMobile={isMobile} />
         <Suspense fallback={null}>
           <GymEnvironment />
           <GymCharacter activeExercise={activeExercise} onRepComplete={onRepComplete} pulseRef={pulseRef} characterX={characterX} />
-          {!isMobile && <ContactShadows position={[CHARACTER_X, 0.002, 0]} opacity={0.65} scale={5} blur={1.6} far={1.5} />}
+          <ContactShadows position={[characterX, 0.002, 0]} opacity={0.65} scale={5} blur={1.6} far={1.5} />
         </Suspense>
       </Canvas>
     </div>
