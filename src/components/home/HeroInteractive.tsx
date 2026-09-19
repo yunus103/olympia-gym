@@ -56,6 +56,8 @@ export function HeroInteractive({ title, cta }: HeroInteractiveProps) {
   const handleDrag = useCallback(() => setDragged(true), []);
   const handleError = useCallback(() => setFailed(true), []);
 
+  const exercise = EXERCISES.find((e) => e.key === activeExercise);
+
   const selectExercise = (key: ExerciseKey) => {
     if (key === activeExercise) return;
     setRepCount(0);
@@ -90,11 +92,20 @@ export function HeroInteractive({ title, cta }: HeroInteractiveProps) {
           <p
             aria-hidden
             className={cn(
-              "text-xs uppercase tracking-wider text-muted-foreground transition-opacity duration-500",
+              "absolute inset-x-4 bottom-14 truncate text-center text-[11px] uppercase tracking-wide text-muted-foreground transition-opacity duration-500 md:static md:inset-auto md:text-xs md:tracking-wider",
               loaded && !dragged ? "opacity-100" : "opacity-0"
             )}
           >
-            &harr; Sürükleyerek döndür
+            &harr; Karakteri sağa-sola sürükleyerek döndür
+          </p>
+          <p
+            className={cn(
+              "max-w-full truncate text-center text-xs tracking-wider text-muted-foreground transition-opacity duration-300",
+              exercise ? "opacity-100" : "opacity-0"
+            )}
+          >
+            <span className="font-display font-bold uppercase text-foreground">{exercise?.title}</span>
+            <span className="hidden md:inline"> · {exercise?.muscle}</span> — {exercise?.note}
           </p>
           <div className="pointer-events-auto flex items-stretch gap-2">
             <div role="radiogroup" aria-label="Egzersiz" className="chamfer flex bg-card p-1">

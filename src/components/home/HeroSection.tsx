@@ -14,7 +14,7 @@ export function HeroSection({ data }: HeroSectionProps) {
     <section className="relative h-svh min-h-[560px] w-full overflow-hidden bg-background md:h-dvh">
       <HeroInteractive
         title={
-          <h1 className="pointer-events-auto max-w-[12ch] text-[44px] leading-[0.9] tracking-tight uppercase md:text-7xl lg:text-8xl">
+          <h1 className="pointer-events-auto text-balance text-[34px] leading-[0.9] tracking-tight uppercase md:max-w-[12ch] md:text-7xl lg:text-8xl">
             {data?.heroTitle}
           </h1>
         }
