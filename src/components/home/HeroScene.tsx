@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, useAnimations, useGLTF, useProgress } from "@react-three/drei";
 import { Color, Group, LoopRepeat, MathUtils, Mesh, MeshStandardMaterial, SpotLight, Vector3 } from "three";
@@ -98,15 +98,22 @@ function GymCharacter({
   onRepComplete,
   pulseRef,
   characterX,
-}: Pick<SceneProps, "activeExercise" | "onRepComplete"> & { pulseRef: React.MutableRefObject<number>; characterX: number }) {
+  onReady,
+}: Pick<SceneProps, "activeExercise" | "onRepComplete"> & {
+  pulseRef: React.MutableRefObject<number>;
+  characterX: number;
+  onReady: () => void;
+}) {
   const groupRef = useRef<Group>(null);
   const { scene, animations } = useGLTF(CHARACTER_MODEL_PATH);
   const { actions, mixer } = useAnimations(animations, groupRef);
 
   // Per-exercise glow weights (x = biceps, y = front raise, z = squat), read by the patched skin shader.
   const highlightWeights = useRef(new Vector3());
+  const frameCount = useRef(0);
 
-  useEffect(() => {
+  // Layout effect: runs before the first R3F frame, so the character is never drawn culled/unpatched.
+  useLayoutEffect(() => {
     // Align rest-pose Hips translation with the animated frame so feet touch the floor.
     scene.getObjectByName("mixamorig:Hips")?.position.set(0.002947, -0.008119, -10.158342);
 
@@ -158,6 +165,9 @@ function GymCharacter({
   }, [activeExercise, actions, mixer, onRepComplete, pulseRef]);
 
   useFrame((_, delta) => {
+    // Shaders compile on the first frame; by the second the character is on screen and the loading overlay can go.
+    if (frameCount.current < 2 && ++frameCount.current === 2) onReady();
+
     const config = EXERCISES.find((e) => e.key === activeExercise);
     const action = config ? actions[config.actionName] : undefined;
     let contraction = 0;
@@ -251,15 +261,16 @@ function CameraRig({ pointer, isMobile }: { pointer: React.MutableRefObject<Poin
   return null;
 }
 
-function LoadingOverlay({ onLoaded }: { onLoaded: () => void }) {
-  const { active, progress, errors } = useProgress();
+// `ready` = the character has actually been drawn; download progress alone hides the shader-compile stall.
+function LoadingOverlay({ ready, onLoaded }: { ready: boolean; onLoaded: () => void }) {
+  const { progress, errors } = useProgress();
   const [visible, setVisible] = useState(true);
-  const done = !active && progress === 100;
+  const done = ready && progress === 100;
 
   useEffect(() => {
     if (!done) return;
     onLoaded();
-    const id = setTimeout(() => setVisible(false), 500);
+    const id = setTimeout(() => setVisible(false), 300);
     return () => clearTimeout(id);
   }, [done, onLoaded]);
 
@@ -267,7 +278,7 @@ function LoadingOverlay({ onLoaded }: { onLoaded: () => void }) {
   return (
     <div
       className={cn(
-        "absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background bg-honeycomb transition-opacity duration-500",
+        "absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background bg-honeycomb transition-opacity duration-300",
         done && "opacity-0"
       )}
     >
@@ -282,6 +293,8 @@ function LoadingOverlay({ onLoaded }: { onLoaded: () => void }) {
 export function HeroScene({ activeExercise, onRepComplete, onLoaded, onDrag, isMobile, paused }: SceneProps) {
   const pulseRef = useRef(0);
   const characterX = isMobile ? CHARACTER_X_MOBILE : CHARACTER_X;
+  const [sceneReady, setSceneReady] = useState(false);
+  const handleReady = useCallback(() => setSceneReady(true), []);
   const pointer = useRef<PointerState>({
     dragging: false,
     yaw: 0,
@@ -339,7 +352,7 @@ export function HeroScene({ activeExercise, onRepComplete, onLoaded, onDrag, isM
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
     >
-      <LoadingOverlay onLoaded={onLoaded} />
+      <LoadingOverlay ready={sceneReady} onLoaded={onLoaded} />
       <Canvas
         // Shadow map pass is the priciest thing on phones and barely visible there; ContactShadows grounds the character instead.
         shadows={!isMobile}
@@ -363,7 +376,13 @@ export function HeroScene({ activeExercise, onRepComplete, onLoaded, onDrag, isM
         <CameraRig pointer={pointer} isMobile={isMobile} />
         <Suspense fallback={null}>
           <GymEnvironment />
-          <GymCharacter activeExercise={activeExercise} onRepComplete={onRepComplete} pulseRef={pulseRef} characterX={characterX} />
+          <GymCharacter
+            activeExercise={activeExercise}
+            onRepComplete={onRepComplete}
+            pulseRef={pulseRef}
+            characterX={characterX}
+            onReady={handleReady}
+          />
           <ContactShadows position={[characterX, 0.002, 0]} opacity={0.65} scale={5} blur={1.6} far={1.5} />
         </Suspense>
       </Canvas>
