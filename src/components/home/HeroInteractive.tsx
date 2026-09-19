@@ -4,8 +4,15 @@ import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
 import { EXERCISES, ExerciseKey } from "@/components/home/heroExercises";
+import { HeroErrorBoundary } from "@/components/home/HeroErrorBoundary";
 
-const HeroScene = dynamic(() => import("@/components/home/HeroScene").then((m) => m.HeroScene), { ssr: false });
+// Shown while the scene chunk downloads and as the fallback when the scene fails to render.
+const HeroPlaceholder = () => <div className="absolute inset-0 bg-background bg-honeycomb" />;
+
+const HeroScene = dynamic(() => import("@/components/home/HeroScene").then((m) => m.HeroScene), {
+  ssr: false,
+  loading: HeroPlaceholder,
+});
 
 interface HeroInteractiveProps {
   title: ReactNode;
@@ -20,6 +27,7 @@ export function HeroInteractive({ title, cta }: HeroInteractiveProps) {
   const [inView, setInView] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [dragged, setDragged] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -46,6 +54,7 @@ export function HeroInteractive({ title, cta }: HeroInteractiveProps) {
   const handleLoaded = useCallback(() => setLoaded(true), []);
   const handleRepComplete = useCallback(() => setRepCount((c) => c + 1), []);
   const handleDrag = useCallback(() => setDragged(true), []);
+  const handleError = useCallback(() => setFailed(true), []);
 
   const selectExercise = (key: ExerciseKey) => {
     if (key === activeExercise) return;
@@ -55,14 +64,16 @@ export function HeroInteractive({ title, cta }: HeroInteractiveProps) {
 
   return (
     <div ref={sectionRef} className="relative h-full w-full">
-      <HeroScene
-        activeExercise={activeExercise}
-        onRepComplete={handleRepComplete}
-        onLoaded={handleLoaded}
-        onDrag={handleDrag}
-        isMobile={isMobile}
-        paused={!inView}
-      />
+      <HeroErrorBoundary fallback={<HeroPlaceholder />} onError={handleError}>
+        <HeroScene
+          activeExercise={activeExercise}
+          onRepComplete={handleRepComplete}
+          onLoaded={handleLoaded}
+          onDrag={handleDrag}
+          isMobile={isMobile}
+          paused={!inView}
+        />
+      </HeroErrorBoundary>
 
       {/* Legibility gradients: light at the top under the header, heavy at the bottom behind the controls. */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[40%] bg-gradient-to-b from-background via-background/85 to-transparent md:h-[20%] md:from-background/70 md:via-transparent" />
@@ -74,7 +85,7 @@ export function HeroInteractive({ title, cta }: HeroInteractiveProps) {
           <div className="pointer-events-auto hidden md:block">{cta}</div>
         </div>
 
-        <div className="flex flex-col items-center gap-3 md:h-full md:justify-end md:pb-10">
+        <div className={cn("flex flex-col items-center gap-3 md:h-full md:justify-end md:pb-10", failed && "invisible")}>
           {/* Drag hint: hardcoded by design (hero scene exception), fades out after the first drag but stays in the DOM. */}
           <p
             aria-hidden

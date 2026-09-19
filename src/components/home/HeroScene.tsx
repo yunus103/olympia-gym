@@ -246,7 +246,7 @@ function CameraRig({ pointer, isMobile }: { pointer: React.MutableRefObject<Poin
 }
 
 function LoadingOverlay({ onLoaded }: { onLoaded: () => void }) {
-  const { active, progress } = useProgress();
+  const { active, progress, errors } = useProgress();
   const [visible, setVisible] = useState(true);
   const done = !active && progress === 100;
 
@@ -257,7 +257,7 @@ function LoadingOverlay({ onLoaded }: { onLoaded: () => void }) {
     return () => clearTimeout(id);
   }, [done, onLoaded]);
 
-  if (!visible) return null;
+  if (!visible || errors.length > 0) return null;
   return (
     <div
       className={cn(
