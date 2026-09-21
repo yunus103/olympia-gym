@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { HashLink } from "@/components/ui/HashLink";
 import { Button } from "@/components/ui/button";
 import { HeroInteractive } from "@/components/home/HeroInteractive";
 import { HomePage } from "@/types";
@@ -20,7 +20,7 @@ export function HeroSection({ data }: HeroSectionProps) {
         }
         cta={
           cta?.label && cta.href ? (
-            <Button size="lg" className="w-full md:w-auto" render={<Link href={cta.href} />}>
+            <Button size="lg" className="w-full md:w-auto" render={<HashLink href={cta.href} />}>
               {cta.label}
             </Button>
           ) : null

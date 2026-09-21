@@ -1,3 +1,4 @@
+import { HashLink } from "@/components/ui/HashLink";
 import Link from "next/link";
 import { SanityImage } from "@/components/ui/SanityImage";
 import { formatOpeningHours } from "@/lib/openingHours";
@@ -58,7 +59,7 @@ export function Footer({ settings, navigation }: { settings: SiteSettings; navig
           {links.length > 0 && (
             <nav aria-label="Footer menü" className="flex flex-col items-start gap-2">
               {links.map((item) => (
-                <Link
+                <HashLink
                   key={item.href}
                   href={item.href}
                   prefetch={false}
@@ -67,7 +68,7 @@ export function Footer({ settings, navigation }: { settings: SiteSettings; navig
                   className="font-display text-sm font-bold uppercase tracking-wide text-muted-foreground hover:text-primary"
                 >
                   {item.label}
-                </Link>
+                </HashLink>
               ))}
             </nav>
           )}

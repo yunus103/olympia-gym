@@ -1,5 +1,6 @@
 "use client";
 
+import { HashLink } from "@/components/ui/HashLink";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -109,7 +110,7 @@ export function Header({ siteName, logo, links = [], whatsappNumber, whatsappLab
             {links.map((item) => {
               const isActive = item.href === activeHref;
               return (
-                <Link
+                <HashLink
                   key={item.href}
                   href={item.href}
                   prefetch={false}
@@ -127,7 +128,7 @@ export function Header({ siteName, logo, links = [], whatsappNumber, whatsappLab
                       isActive ? "scale-x-100" : "scale-x-0"
                     )}
                   />
-                </Link>
+                </HashLink>
               );
             })}
             {whatsappHref && (
@@ -186,7 +187,7 @@ export function Header({ siteName, logo, links = [], whatsappNumber, whatsappLab
                   exit={{ x: -24, opacity: 0 }}
                   transition={{ delay: 0.05 + i * 0.04, duration: 0.25, ease: "easeOut" }}
                 >
-                  <Link
+                  <HashLink
                     href={item.href}
                     prefetch={false}
                     onClick={() => setMenuOpen(false)}
@@ -198,7 +199,7 @@ export function Header({ siteName, logo, links = [], whatsappNumber, whatsappLab
                     <span className="font-display text-[2.75rem] font-extrabold uppercase leading-none tracking-tight">
                       {item.label}
                     </span>
-                  </Link>
+                  </HashLink>
                 </motion.div>
               ))}
             </nav>
