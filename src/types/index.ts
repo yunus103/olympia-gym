@@ -113,6 +113,14 @@ export interface PtItem {
   text?: string;
 }
 
+export interface TeamMember {
+  _key: string;
+  name: string;
+  role: string;
+  photo?: SanityImage;
+  instagram?: string;
+}
+
 export interface Review {
   _key: string;
   author: string;
@@ -150,6 +158,9 @@ export interface HomePage {
   aboutTitle?: string;
   aboutBody?: PortableTextBlock[];
   aboutImage?: SanityImage;
+  teamTitle?: string;
+  teamSubtitle?: string;
+  teamMembers?: TeamMember[] | null;
   reviewsTitle?: string;
   reviewsSubtitle?: string;
   reviews?: Review[] | null;

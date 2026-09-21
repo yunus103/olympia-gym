@@ -46,6 +46,8 @@ export const homePageQuery = groq`*[_type == "homePage"][0] {
   pricingPtTitle, pricingPtText, pricingPtItems[] { _key, title, text }, pricingPtCtaLabel,
   aboutTitle, aboutBody,
   aboutImage ${imageFields},
+  teamTitle, teamSubtitle,
+  teamMembers[] { _key, name, role, instagram, photo ${imageFields} },
   reviewsTitle, reviewsSubtitle,
   reviews[] { _key, author, rating, text, date },
   faqTitle, faqSubtitle,

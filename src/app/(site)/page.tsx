@@ -7,6 +7,7 @@ import { InfoStrip } from "@/components/home/InfoStrip";
 import { GallerySection } from "@/components/home/GallerySection";
 import { PricingSection } from "@/components/home/PricingSection";
 import { AboutSection } from "@/components/home/AboutSection";
+import { TeamSection } from "@/components/home/TeamSection";
 import { ReviewsSection } from "@/components/home/ReviewsSection";
 import { FaqSection } from "@/components/home/FaqSection";
 import { LocationSection } from "@/components/home/LocationSection";
@@ -35,6 +36,7 @@ export default async function HomePage() {
       <GallerySection title={data?.galleryTitle} subtitle={data?.gallerySubtitle} siteName={layout?.settings?.siteName} items={data?.galleryItems} />
       <PricingSection data={data} plans={plans} whatsappNumber={layout?.settings?.contactInfo?.whatsappNumber} />
       <AboutSection data={data} />
+      <TeamSection data={data} />
       <ReviewsSection data={data} settings={layout?.settings} />
       <FaqSection data={data} />
       <LocationSection data={data} settings={layout?.settings} />

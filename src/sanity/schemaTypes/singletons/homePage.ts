@@ -10,6 +10,7 @@ export const homePageType = defineType({
     { name: "gallery", title: "Galeri" },
     { name: "pricing", title: "Fiyatlar" },
     { name: "about", title: "Hakkında" },
+    { name: "team", title: "Ekip" },
     { name: "reviews", title: "Yorumlar" },
     { name: "faq", title: "SSS" },
     { name: "location", title: "Konum" },
@@ -149,6 +150,43 @@ export const homePageType = defineType({
       group: "about",
       options: { hotspot: true },
       fields: [defineField({ name: "alt", title: "Alt Metni", type: "string" })],
+    }),
+
+    // Team
+    defineField({ name: "teamTitle", title: "Başlık", type: "string", group: "team", initialValue: "Ekibimiz" }),
+    defineField({ name: "teamSubtitle", title: "Alt Başlık", type: "text", rows: 2, group: "team", initialValue: "Salonda seni karşılayacak ekip." }),
+    defineField({
+      name: "teamMembers",
+      title: "Üyeler",
+      type: "array",
+      group: "team",
+      description: "3 kişide 3'lü, 4 ve üzerinde 4'lü grid olarak gösterilir. Sürükleyerek sıralayın.",
+      of: [
+        {
+          type: "object",
+          name: "teamMember",
+          fields: [
+            defineField({ name: "name", title: "İsim", type: "string", validation: (Rule) => Rule.required() }),
+            defineField({ name: "role", title: "Rol", type: "string", initialValue: "Antrenör", validation: (Rule) => Rule.required() }),
+            defineField({
+              name: "photo",
+              title: "Fotoğraf",
+              type: "image",
+              options: { hotspot: true },
+              fields: [defineField({ name: "alt", title: "Alt Metni", type: "string" })],
+            }),
+            defineField({ name: "instagram", title: "Instagram", type: "url", validation: (Rule) => Rule.uri({ scheme: ["https"] }) }),
+          ],
+          preview: {
+            select: { title: "name", subtitle: "role", media: "photo" },
+          },
+        },
+      ],
+      initialValue: [
+        { _type: "teamMember", name: "Ahmet Yılmaz", role: "Kurucu · Antrenör" },
+        { _type: "teamMember", name: "Mehmet Kaya", role: "Antrenör" },
+        { _type: "teamMember", name: "Elif Demir", role: "Antrenör" },
+      ],
     }),
 
     // Reviews
